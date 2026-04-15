@@ -71,7 +71,7 @@
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       transition: opacity .4s ease;
     }
-    .screen.gone { opacity: 0; pointer-events: none; }
+    .screen.gone { opacity: 0; pointer-events: none; visibility: hidden; }
     .orb {
       width: 70px; height: 70px; border-radius: 50%; margin-bottom: 24px;
       background: radial-gradient(circle at 35% 35%, #a8d4ff 0%, #575ECF 55%, #060b18 100%);
@@ -239,9 +239,14 @@ const CFG = {
 // ════════════════════════════════════════════════════════════════════
 const canvas = document.getElementById('gc');
 const ctx    = canvas.getContext('2d');
-function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-resize();
-window.addEventListener('resize', () => { resize(); });
+function resize() {
+  const w = canvas.offsetWidth  || canvas.parentElement.offsetWidth  || window.innerWidth;
+  const h = canvas.offsetHeight || canvas.parentElement.offsetHeight || window.innerHeight;
+  canvas.width = w; canvas.height = h;
+}
+// Defer first resize so CSS layout is guaranteed to have settled
+window.addEventListener('load', resize);
+window.addEventListener('resize', resize);
 
 // ════════════════════════════════════════════════════════════════════
 //  ROAD DEFINITION
@@ -1241,6 +1246,7 @@ function lose() {
 }
 
 function startGame() {
+  resize(); // ensure canvas has correct dimensions before any drawing
   G.phase='play'; G.frame=0;
   G.timerMs = CFG.TIME_LIMIT * 1000;
   G.lastTime = performance.now();
