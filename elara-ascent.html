@@ -338,17 +338,17 @@ function generateObstacles() {
       OBSTACLES.push({ type:'rock', wy, xOff: (rng()-.5)*1.2, r: 14+rng()*14 });
     } else if (rr < 0.48) {
       // Rock pair — player must find the gap
-      OBSTACLES.push({ type:'rock', wy,     xOff: -0.45+rng()*.2, r: 15+rng()*8 });
-      OBSTACLES.push({ type:'rock', wy-60,  xOff:  0.25+rng()*.2, r: 15+rng()*8 });
+      OBSTACLES.push({ type:'rock', wy,        xOff: -0.45+rng()*.2, r: 15+rng()*8 });
+      OBSTACLES.push({ type:'rock', wy: wy-60, xOff:  0.25+rng()*.2, r: 15+rng()*8 });
     } else if (rr < 0.64) {
       OBSTACLES.push({ type:'ice',  wy, xOff: (rng()-.5)*.8, r: 50+rng()*40 });
     } else if (rr < 0.76) {
       OBSTACLES.push({ type:'wind', wy, dir: rng()<.5?-1:1 });
     } else if (rr < 0.88) {
       // Triple rock field — very challenging
-      OBSTACLES.push({ type:'rock', wy,     xOff: -0.55, r: 13 });
-      OBSTACLES.push({ type:'rock', wy-40,  xOff:  0.10, r: 16 });
-      OBSTACLES.push({ type:'rock', wy-100, xOff:  0.52, r: 13 });
+      OBSTACLES.push({ type:'rock', wy,         xOff: -0.55, r: 13 });
+      OBSTACLES.push({ type:'rock', wy: wy-40,  xOff:  0.10, r: 16 });
+      OBSTACLES.push({ type:'rock', wy: wy-100, xOff:  0.52, r: 13 });
     } else {
       OBSTACLES.push({ type:'drift', wy, xOff: (rng()-.5)*.5, r: 45 });
     }
