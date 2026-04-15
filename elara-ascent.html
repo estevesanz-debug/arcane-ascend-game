@@ -156,7 +156,7 @@
     <div class="title">Arcane Ascend</div>
     <div class="subtitle">Elara's Ascent</div>
     <div class="atmo">3 minutes 30 seconds. One mountain road. Ice, wind, and stone between you and the summit relic.</div>
-    <button class="btn" id="btn-start">Begin Ascent</button>
+    <button class="btn" id="btn-start" onclick="startGame()">Begin Ascent</button>
     <div class="hint">Mobile: tap sides to steer · swipe up to pedal<br>Desktop: ← → steer · ↑ pedal · ↓ brake</div>
     <span class="badge">028 / 120 · R</span>
   </div>
@@ -171,7 +171,7 @@
       <div class="stat"><div class="stat-val" id="win-time">—</div><div class="stat-lbl">Time Left</div></div>
       <div class="stat"><div class="stat-val" id="win-falls">—</div><div class="stat-lbl">Falls</div></div>
     </div>
-    <button class="btn" id="btn-restart" style="border-color:rgba(212,175,55,.5);color:#ffe8a0;box-shadow:0 0 22px rgba(212,175,55,.25)">Ascend Again</button>
+    <button class="btn" id="btn-restart" onclick="startGame()" style="border-color:rgba(212,175,55,.5);color:#ffe8a0;box-shadow:0 0 22px rgba(212,175,55,.25)">Ascend Again</button>
     <span class="badge">Zen of the Mountains</span>
   </div>
 
@@ -185,7 +185,7 @@
       <div class="stat"><div class="stat-val" id="lose-pct" style="color:#ff8888">—</div><div class="stat-lbl">Reached</div></div>
       <div class="stat"><div class="stat-val" id="lose-falls" style="color:#ff8888">—</div><div class="stat-lbl">Falls</div></div>
     </div>
-    <button class="btn" id="btn-retry">Try Again</button>
+    <button class="btn" id="btn-retry" onclick="startGame()">Try Again</button>
     <span class="badge">028 / 120 · R</span>
   </div>
 </div>
@@ -195,6 +195,15 @@
 //  ARCANE ASCEND: ELARA'S ASCENT — Mountain Road Climbing Game
 //  Link this page from the Arcane Ascend website to play.
 // ════════════════════════════════════════════════════════════════════
+
+// Surface any JS errors visually (remove after debugging)
+window.onerror = function(msg, src, line, col, err) {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:14px 16px;z-index:999999;font-family:monospace;font-size:12px;line-height:1.5;white-space:pre-wrap';
+  d.textContent = 'JS ERROR: ' + msg + '\nLine: ' + line + '\n' + (err && err.stack ? err.stack : '');
+  document.body.appendChild(d);
+  return false;
+};
 
 // ── POLYFILL ──────────────────────────────────────────────────────
 if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -1323,7 +1332,7 @@ wrap.addEventListener('touchmove', e => {
 }, {passive:false});
 
 wrap.addEventListener('touchend', e => {
-  e.preventDefault();
+  if (G.phase === 'play') e.preventDefault();
   TH.left=TH.right=TH.pedal=false;
   document.getElementById('tz-left').classList.remove('on');
   document.getElementById('tz-right').classList.remove('on');
