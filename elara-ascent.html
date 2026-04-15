@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#060b18">
+  <title>Arcane Ascend: Elara's Ascent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #030609;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #c5c1b9; touch-action: none;
+      user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #wrap {
+      position: fixed; left: 50%; top: 0;
+      transform: translateX(-50%);
+      width: min(430px, 100vw); height: 100vh; overflow: hidden;
+    }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    /* ── HUD ── */
+    #hud {
+      display: none; position: absolute; top: 0; left: 0; right: 0;
+      z-index: 5; pointer-events: none;
+      padding: 10px 14px 0;
+    }
+    .hud-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .hud-timer {
+      font-size: 22px; font-weight: 800; letter-spacing: .04em;
+      color: #a8d4ff; text-shadow: 0 0 12px rgba(87,94,207,.7);
+      min-width: 72px; text-align: center;
+      transition: color .3s;
+    }
+    .hud-timer.urgent { color: #ff5050; text-shadow: 0 0 12px rgba(255,50,50,.8); animation: timerPulse .5s ease infinite alternate; }
+    @keyframes timerPulse { from { opacity:1 } to { opacity:.5 } }
+    .hud-bar-wrap { flex: 1; }
+    .hud-lbl { font-size: 8px; letter-spacing: .18em; text-transform: uppercase; color: rgba(197,193,185,.35); text-align: center; margin-bottom: 4px; }
+    .hud-track { height: 4px; background: rgba(255,255,255,.07); border-radius: 2px; border: 1px solid rgba(87,94,207,.15); }
+    .hud-fill { height: 100%; border-radius: 2px; width: 0%; background: linear-gradient(90deg,#575ECF,#a8d4ff); box-shadow: 0 0 8px rgba(87,94,207,.9); transition: width .2s ease; }
+    .hud-side { font-size: 10px; letter-spacing: .1em; color: rgba(197,193,185,.45); min-width: 44px; }
+    .hud-speed-wrap { display: flex; gap: 3px; align-items: flex-end; }
+    .speed-bar { width: 5px; border-radius: 1px; background: rgba(87,94,207,.3); transition: background .15s, height .15s; }
+
+    /* ── CHALLENGE BANNER ── */
+    #challenge {
+      position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+      z-index: 8; pointer-events: none;
+      font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+      padding: 8px 22px; border-radius: 8px;
+      border: 1px solid rgba(255,180,50,.4);
+      background: rgba(6,11,24,.85);
+      color: #ffcc60;
+      text-shadow: 0 0 12px rgba(255,200,60,.6);
+      backdrop-filter: blur(8px);
+      opacity: 0; transition: opacity .25s ease;
+      white-space: nowrap;
+    }
+    #challenge.show { opacity: 1; }
+
+    /* ── OVERLAY SCREENS ── */
+    .screen {
+      position: absolute; inset: 0; z-index: 20;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 36px 28px; text-align: center;
+      background: rgba(4,7,20,.94);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      transition: opacity .4s ease;
+    }
+    .screen.gone { opacity: 0; pointer-events: none; }
+    .orb {
+      width: 70px; height: 70px; border-radius: 50%; margin-bottom: 24px;
+      background: radial-gradient(circle at 35% 35%, #a8d4ff 0%, #575ECF 55%, #060b18 100%);
+      box-shadow: 0 0 36px rgba(87,94,207,.55), 0 0 72px rgba(87,94,207,.22);
+      animation: orbPulse 3s ease-in-out infinite;
+    }
+    .orb.gold {
+      background: radial-gradient(circle at 35% 35%, #fff0b0 0%, #d4af37 55%, #1a0c00 100%);
+      box-shadow: 0 0 36px rgba(212,175,55,.6), 0 0 72px rgba(212,175,55,.25);
+    }
+    @keyframes orbPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    .title {
+      font-size: clamp(22px, 7vw, 36px); font-weight: 800;
+      letter-spacing: .1em; text-transform: uppercase;
+      background: linear-gradient(135deg, #a8d4ff 0%, #575ECF 45%, #d4af37 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      line-height: 1.1; margin-bottom: 6px;
+    }
+    .subtitle { font-size: clamp(10px,3vw,13px); color: rgba(197,193,185,.5); letter-spacing: .22em; text-transform: uppercase; font-style: italic; margin-bottom: 28px; }
+    .atmo { font-size: clamp(13px,3.5vw,15px); color: rgba(197,193,185,.75); max-width: 300px; line-height: 1.65; margin-bottom: 32px; font-style: italic; }
+    .poem { font-size: clamp(13px,3.5vw,15px); color: #d4af37; max-width: 290px; line-height: 1.7; margin-bottom: 28px; font-style: italic; text-shadow: 0 0 18px rgba(212,175,55,.35); }
+    .stats-row { display: flex; gap: 24px; margin-bottom: 28px; }
+    .stat { text-align: center; }
+    .stat-val { font-size: 22px; font-weight: 700; color: #a8d4ff; }
+    .stat-lbl { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: rgba(197,193,185,.4); margin-top: 2px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1b3568 0%, #2c4ea0 55%, #1b3568 100%);
+      border: 1px solid rgba(87,94,207,.5); border-radius: 12px;
+      color: #a8d4ff; font-size: clamp(13px,3.8vw,16px); font-weight: 700;
+      letter-spacing: .14em; text-transform: uppercase;
+      padding: 13px 34px; cursor: pointer; outline: none;
+      box-shadow: 0 0 22px rgba(87,94,207,.28), 0 4px 14px rgba(0,0,0,.5);
+      transition: all .18s ease; min-width: 170px;
+    }
+    .btn:hover { background: linear-gradient(135deg,#2c4ea0,#3d60c0,#2c4ea0); transform: translateY(-1px); }
+    .btn:active { transform: scale(.97); }
+    .hint { margin-top: 20px; font-size: 10px; color: rgba(197,193,185,.28); letter-spacing: .12em; text-transform: uppercase; line-height: 2; }
+    .badge { position: absolute; bottom: 14px; right: 16px; font-size: 9px; color: rgba(197,193,185,.18); letter-spacing: .14em; }
+
+    /* ── TOUCH ZONES ── */
+    #tz-left, #tz-right {
+      position: absolute; top: 0; bottom: 0; width: 38%; z-index: 4;
+      opacity: 0; pointer-events: none; transition: opacity .1s;
+    }
+    #tz-left  { left: 0;  background: linear-gradient(90deg, rgba(87,94,207,.07),transparent); }
+    #tz-right { right: 0; background: linear-gradient(270deg,rgba(87,94,207,.07),transparent); }
+    #tz-left.on, #tz-right.on { opacity: 1; }
+
+    /* Red flash on crash */
+    #crash-flash {
+      position: absolute; inset: 0; z-index: 6; pointer-events: none;
+      background: rgba(200,30,30,.35); opacity: 0; transition: opacity .1s;
+    }
+    #crash-flash.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="gc"></canvas>
+
+  <div id="hud">
+    <div class="hud-row">
+      <div class="hud-side" id="hud-falls" style="text-align:left">↓ 0</div>
+      <div class="hud-timer" id="hud-timer">3:30</div>
+      <div class="hud-bar-wrap">
+        <div class="hud-lbl">Summit</div>
+        <div class="hud-track"><div class="hud-fill" id="hud-fill"></div></div>
+      </div>
+      <div class="hud-speed-wrap" id="hud-speed"></div>
+    </div>
+  </div>
+
+  <div id="challenge"></div>
+  <div id="crash-flash"></div>
+  <div id="tz-left"></div>
+  <div id="tz-right"></div>
+
+  <!-- Start Screen -->
+  <div class="screen" id="scr-start">
+    <div class="orb"></div>
+    <div class="title">Arcane Ascend</div>
+    <div class="subtitle">Elara's Ascent</div>
+    <div class="atmo">3 minutes 30 seconds. One mountain road. Ice, wind, and stone between you and the summit relic.</div>
+    <button class="btn" id="btn-start">Begin Ascent</button>
+    <div class="hint">Mobile: tap sides to steer · swipe up to pedal<br>Desktop: ← → steer · ↑ pedal · ↓ brake</div>
+    <span class="badge">028 / 120 · R</span>
+  </div>
+
+  <!-- Win Screen -->
+  <div class="screen gone" id="scr-win">
+    <div class="orb gold"></div>
+    <div class="title" style="background:linear-gradient(135deg,#ffe8a0,#d4af37,#fff0b0);-webkit-background-clip:text;background-clip:text;">Summit Reached</div>
+    <div class="subtitle">The Relic Awakens</div>
+    <div class="poem">"She arrived where wind becomes light,<br>where the mountain bowed to her rhythm."</div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-val" id="win-time">—</div><div class="stat-lbl">Time Left</div></div>
+      <div class="stat"><div class="stat-val" id="win-falls">—</div><div class="stat-lbl">Falls</div></div>
+    </div>
+    <button class="btn" id="btn-restart" style="border-color:rgba(212,175,55,.5);color:#ffe8a0;box-shadow:0 0 22px rgba(212,175,55,.25)">Ascend Again</button>
+    <span class="badge">Zen of the Mountains</span>
+  </div>
+
+  <!-- Lose Screen -->
+  <div class="screen gone" id="scr-lose">
+    <div class="orb" style="background:radial-gradient(circle at 35% 35%,#ff8888,#cc2244,#060b18);box-shadow:0 0 36px rgba(200,40,80,.5)"></div>
+    <div class="title" style="background:linear-gradient(135deg,#ff9999,#cc3355,#ff6688);-webkit-background-clip:text;background-clip:text;">Time Expired</div>
+    <div class="subtitle">The Mountain Endures</div>
+    <div class="atmo" style="color:rgba(197,193,185,.6)">"The summit waits for those<br>who ride again."</div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-val" id="lose-pct" style="color:#ff8888">—</div><div class="stat-lbl">Reached</div></div>
+      <div class="stat"><div class="stat-val" id="lose-falls" style="color:#ff8888">—</div><div class="stat-lbl">Falls</div></div>
+    </div>
+    <button class="btn" id="btn-retry">Try Again</button>
+    <span class="badge">028 / 120 · R</span>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+//  ARCANE ASCEND: ELARA'S ASCENT — Mountain Road Climbing Game
+//  Link this page from the Arcane Ascend website to play.
+// ════════════════════════════════════════════════════════════════════
+
+// ── POLYFILL ──────────────────────────────────────────────────────
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.beginPath();
+    this.moveTo(x+r,y); this.lineTo(x+w-r,y); this.arcTo(x+w,y,x+w,y+r,r);
+    this.lineTo(x+w,y+h-r); this.arcTo(x+w,y+h,x+w-r,y+h,r);
+    this.lineTo(x+r,y+h); this.arcTo(x,y+h,x,y+h-r,r);
+    this.lineTo(x,y+r); this.arcTo(x,y,x+r,y,r);
+    this.closePath(); return this;
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  TUNABLE CONFIG  ← all game-feel values live here
+// ════════════════════════════════════════════════════════════════════
+const CFG = {
+  LEVEL_H:        7200,   // World height (mountain, in px)
+  BASE_SPEED:     1.5,    // Auto-climb px/frame (without pedaling)
+  MAX_SPEED:      4.2,    // Max speed when pedaling hard
+  SPEED_DECAY:    0.022,  // Speed loss per frame without pedaling
+  PEDAL_ACCEL:    0.09,   // Speed gain per frame when pedaling (↑ key)
+  BRAKE_DECEL:    0.08,   // Speed loss per frame when braking (↓ key)
+  STEER_ACCEL:    0.38,   // Lateral accel (px/frame²) ← responsiveness
+  MAX_STEER:      4.8,    // Max lateral speed (px/frame)
+  STEER_FRICTION: 0.78,   // Lateral drag (lower = snappier stops)
+  ICE_STEER_FRIC: 0.97,   // Ice is very slippery (high = slides forever)
+  ICE_DURATION:   200,    // Frames of ice effect after hitting ice patch
+  WIND_FORCE:     2.2,    // Lateral force applied by wind gust (px/frame)
+  CRASH_PENALTY:  9000,   // ms subtracted from timer on crash
+  RESPAWN_DELAY:  1800,   // ms before respawning after crash
+  TIME_LIMIT:     210,    // Seconds total (3:30)
+  PLAYER_FRAC:    0.72,   // Player screen Y = canvas.height * this
+  ROAD_BASE_W:    185,    // Road width at base (px, world space)
+  ROAD_TOP_W:     95,     // Road width at summit
+  CHECKPOINT_GAP: 1100,   // World px between auto-checkpoints
+};
+
+// ════════════════════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ════════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+resize();
+window.addEventListener('resize', () => { resize(); });
+
+// ════════════════════════════════════════════════════════════════════
+//  ROAD DEFINITION
+// ════════════════════════════════════════════════════════════════════
+
+// Road center X in WORLD space (curves the road left and right)
+// Tune the multipliers to change how tight the bends are.
+function roadCenterAt(wy) {
+  const W = canvas.width;
+  return W/2
+    + Math.sin(wy * 0.0072 + 1.20) * W * 0.26   // broad sweeping bends
+    + Math.sin(wy * 0.0028 + 3.10) * W * 0.14   // medium curves
+    + Math.sin(wy * 0.0160 + 0.40) * W * 0.07;  // quick wiggles
+}
+
+// Road width in WORLD space (narrows at altitude + special narrow zones)
+function roadWidthAt(wy) {
+  const t = 1 - wy / CFG.LEVEL_H; // 0=bottom, 1=summit
+  let w = CFG.ROAD_BASE_W + (CFG.ROAD_TOP_W - CFG.ROAD_BASE_W) * t;
+  for (const nz of NARROW_ZONES) {
+    if (wy <= nz.top && wy >= nz.bot) w = Math.min(w, nz.w);
+  }
+  return Math.max(68, w);
+}
+
+// Narrow challenge zones — (top, bot) are world Y bounds (higher Y = lower altitude)
+const NARROW_ZONES = [
+  { top: 5600, bot: 5200, w: 105, label: 'NARROW PASS' },
+  { top: 4100, bot: 3700, w:  88, label: 'GORGE SECTION' },
+  { top: 2600, bot: 2200, w:  78, label: 'SUMMIT RIDGE' },
+  { top: 1400, bot: 1100, w:  68, label: 'FINAL ASCENT' },
+];
+
+// Steep grade zones — climb speed multiplied by mult (< 1 = harder)
+const STEEP_ZONES = [
+  { top: 6200, bot: 5700, mult: 0.68, label: 'STEEP GRADE' },
+  { top: 4600, bot: 4000, mult: 0.60, label: 'STEEP GRADE' },
+  { top: 3000, bot: 2400, mult: 0.55, label: 'BRUTAL CLIMB' },
+  { top: 1700, bot: 1000, mult: 0.50, label: 'FINAL PUSH' },
+];
+
+function steepMultAt(wy) {
+  for (const s of STEEP_ZONES) if (wy <= s.top && wy >= s.bot) return s.mult;
+  return 1.0;
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  OBSTACLE GENERATION
+// ════════════════════════════════════════════════════════════════════
+let OBSTACLES = [];
+
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => { s ^= s<<13; s ^= s>>17; s ^= s<<5; return (s>>>0)/0xffffffff; };
+}
+
+function generateObstacles() {
+  OBSTACLES = [];
+  const rng = seeded(0xE1AAC1D);
+
+  // Fixed tutorial obstacles so the player learns the mechanics
+  OBSTACLES.push(
+    { type:'rock',  wy: 6600, xOff: -0.28, r: 16 },
+    { type:'rock',  wy: 6200, xOff:  0.35, r: 18 },
+    { type:'ice',   wy: 5900, xOff:  0.10, r: 55 },
+    { type:'rock',  wy: 5700, xOff: -0.38, r: 15 },
+    { type:'wind',  wy: 5100, dir:  1 },
+    { type:'rock',  wy: 4900, xOff:  0.25, r: 20 },
+    { type:'rock',  wy: 4850, xOff: -0.30, r: 16 },
+  );
+
+  // Procedural obstacles for the rest
+  let wy = 4600;
+  while (wy > 400) {
+    const t   = 1 - wy / CFG.LEVEL_H; // altitude factor
+    const rr  = rng();
+    const gap = 220 + rng() * 280 - t * 60;
+
+    if (rr < 0.28) {
+      OBSTACLES.push({ type:'rock', wy, xOff: (rng()-.5)*1.2, r: 14+rng()*14 });
+    } else if (rr < 0.48) {
+      // Rock pair — player must find the gap
+      OBSTACLES.push({ type:'rock', wy,     xOff: -0.45+rng()*.2, r: 15+rng()*8 });
+      OBSTACLES.push({ type:'rock', wy-60,  xOff:  0.25+rng()*.2, r: 15+rng()*8 });
+    } else if (rr < 0.64) {
+      OBSTACLES.push({ type:'ice',  wy, xOff: (rng()-.5)*.8, r: 50+rng()*40 });
+    } else if (rr < 0.76) {
+      OBSTACLES.push({ type:'wind', wy, dir: rng()<.5?-1:1 });
+    } else if (rr < 0.88) {
+      // Triple rock field — very challenging
+      OBSTACLES.push({ type:'rock', wy,     xOff: -0.55, r: 13 });
+      OBSTACLES.push({ type:'rock', wy-40,  xOff:  0.10, r: 16 });
+      OBSTACLES.push({ type:'rock', wy-100, xOff:  0.52, r: 13 });
+    } else {
+      OBSTACLES.push({ type:'drift', wy, xOff: (rng()-.5)*.5, r: 45 });
+    }
+    wy -= gap;
+  }
+
+  // Mark all as active
+  OBSTACLES.forEach(o => { o.hit = false; o.triggered = false; });
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  GAME & PLAYER STATE
+// ════════════════════════════════════════════════════════════════════
+const G = {
+  phase:    'start',
+  frame:    0,
+  timerMs:  CFG.TIME_LIMIT * 1000,
+  lastTime: 0,
+  falls:    0,
+  camTop:   0,   // worldY at top of screen
+  camX:     0,   // worldX camera tracks (road center at player Y)
+  stars:    [],
+  snowPtcl: [],
+  particles:[],
+  lightning:{ active:false, alpha:0 },
+  challenge:{ text:'', timer:0 },
+  steep:    { active:false, label:'' },
+};
+
+const P = {
+  wy: 0, wx: 0,        // world position
+  vx: 0,               // lateral velocity
+  speed: CFG.BASE_SPEED,
+  crashed: false,
+  crashTimer: 0,
+  checkY: 0,           // last checkpoint worldY
+  onIce: false,
+  iceTimer: 0,
+  windForce: 0,
+  facing: 1,
+  animT: 0,
+  skids: [],           // skid mark positions
+};
+
+function initPlayer() {
+  P.wy      = CFG.LEVEL_H - 80;
+  P.wx      = roadCenterAt(P.wy);
+  P.vx      = 0;
+  P.speed   = CFG.BASE_SPEED;
+  P.crashed = false; P.crashTimer = 0;
+  P.checkY  = P.wy;
+  P.onIce   = false; P.iceTimer = 0;
+  P.windForce = 0;
+  P.facing  = 1; P.animT = 0; P.skids = [];
+  updateCamera();
+}
+
+function updateCamera() {
+  G.camTop = P.wy - canvas.height * CFG.PLAYER_FRAC;
+  G.camX   = roadCenterAt(P.wy);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  ENVIRONMENT
+// ════════════════════════════════════════════════════════════════════
+function initStars() {
+  G.stars = Array.from({length:70}, () => ({
+    x: Math.random()*canvas.width, y: Math.random()*canvas.height*.4,
+    r: Math.random()*1.2+.3, a: Math.random()*.5+.1, tw: Math.random()*Math.PI*2,
+  }));
+}
+
+function initSnow() {
+  G.snowPtcl = Array.from({length:120}, () => ({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    r: Math.random()*1.8+.5,
+    spd: Math.random()*1.2+.4,
+    drift: (Math.random()-.5)*.5,
+    a: Math.random()*.5+.15,
+  }));
+}
+
+function updateSnow() {
+  const alt = 1 - P.wy / CFG.LEVEL_H; // altitude 0-1
+  const windX = P.windForce * 0.4 + (alt > .5 ? .8 : .3);
+  G.snowPtcl.forEach(s => {
+    s.y += s.spd * (1 + alt * 1.5);
+    s.x += windX + s.drift;
+    if (s.y > canvas.height) { s.y = -4; s.x = Math.random()*canvas.width; }
+    if (s.x > canvas.width+4) s.x = -4;
+    if (s.x < -4) s.x = canvas.width+4;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  PHYSICS UPDATE
+// ════════════════════════════════════════════════════════════════════
+function updatePlayer(dt) {
+  if (P.crashed) {
+    P.crashTimer += dt;
+    if (P.crashTimer >= CFG.RESPAWN_DELAY) respawn();
+    return;
+  }
+  P.animT++;
+
+  // ── Vertical speed (climb) ──
+  const pedal = K.up  || TH.up  || TH.pedal;
+  const brake  = K.down || TH.down;
+
+  if (pedal) {
+    P.speed = Math.min(CFG.MAX_SPEED, P.speed + CFG.PEDAL_ACCEL);
+  } else if (brake) {
+    P.speed = Math.max(0.2, P.speed - CFG.BRAKE_DECEL);
+  } else {
+    P.speed = Math.max(CFG.BASE_SPEED * .55, P.speed - CFG.SPEED_DECAY);
+  }
+
+  // Steep grade penalty
+  const sMult = steepMultAt(P.wy);
+  G.steep.active = sMult < 1;
+  if (sMult < 1) {
+    G.steep.label = STEEP_ZONES.find(s => P.wy <= s.top && P.wy >= s.bot)?.label || '';
+  }
+
+  P.wy -= P.speed * sMult;
+  if (P.wy < 60) { win(); return; }
+
+  // ── Lateral steering ──
+  const goL = K.left  || TH.left;
+  const goR = K.right || TH.right;
+  const fric = P.onIce ? CFG.ICE_STEER_FRIC : CFG.STEER_FRICTION;
+
+  if (goL) { P.vx -= CFG.STEER_ACCEL; P.facing = -1; }
+  if (goR) { P.vx += CFG.STEER_ACCEL; P.facing =  1; }
+  if (!goL && !goR) P.vx *= fric;
+  P.vx = Math.max(-CFG.MAX_STEER, Math.min(CFG.MAX_STEER, P.vx));
+
+  // Wind force
+  if (P.windForce !== 0) {
+    P.vx += P.windForce;
+    P.windForce *= 0.92;
+    if (Math.abs(P.windForce) < .05) P.windForce = 0;
+  }
+
+  P.wx += P.vx;
+
+  // Ice timer
+  if (P.onIce) { P.iceTimer--; if (P.iceTimer <= 0) P.onIce = false; }
+
+  // ── Road bounds check ──
+  const rc = roadCenterAt(P.wy);
+  const rw = roadWidthAt(P.wy);
+  if (P.wx < rc - rw/2 + 10 || P.wx > rc + rw/2 - 10) {
+    crash(); return;
+  }
+
+  // ── Obstacle collision ──
+  checkObstacles();
+
+  // ── Auto-checkpoint ──
+  if (P.wy < P.checkY - CFG.CHECKPOINT_GAP) {
+    P.checkY = P.wy;
+    showBanner('✦ WAYPOINT SAVED', 1800);
+  }
+
+  // ── Skid marks (on ice) ──
+  if (P.onIce && Math.abs(P.vx) > 1.2) {
+    P.skids.push({ wx: P.wx, wy: P.wy, a: .5 });
+    if (P.skids.length > 80) P.skids.shift();
+  }
+  P.skids.forEach(s => { s.a -= .004; });
+  P.skids = P.skids.filter(s => s.a > 0);
+
+  updateCamera();
+}
+
+function checkObstacles() {
+  for (const ob of OBSTACLES) {
+    if (ob.hit) continue;
+    if (Math.abs(ob.wy - P.wy) > 80) continue;
+
+    const rc = roadCenterAt(ob.wy);
+    const rw = roadWidthAt(ob.wy);
+    const ox = rc + (ob.xOff || 0) * rw * .45;
+    const dist = Math.hypot(P.wx - ox, P.wy - ob.wy);
+
+    if (ob.type === 'rock') {
+      if (dist < (ob.r || 16) + 9) { ob.hit = true; crash(); return; }
+    } else if (ob.type === 'ice') {
+      if (dist < (ob.r || 50)) {
+        P.onIce = true; P.iceTimer = CFG.ICE_DURATION; ob.hit = true;
+        showBanner('⚠ ICE PATCH', 2000);
+      }
+    } else if (ob.type === 'wind') {
+      if (!ob.triggered && Math.abs(ob.wy - P.wy) < 120) {
+        ob.triggered = true; ob.hit = true;
+        P.windForce = (ob.dir || 1) * CFG.WIND_FORCE;
+        G.lightning.active = true; G.lightning.alpha = 1;
+        spawnWindParticles(ob.dir || 1);
+        showBanner('💨 WIND GUST', 2200);
+      }
+    } else if (ob.type === 'drift') {
+      if (dist < (ob.r || 45)) {
+        P.speed = Math.max(.4, P.speed - .8); ob.hit = true;
+        showBanner('🌨 SNOW DRIFT', 1800);
+      }
+    }
+  }
+
+  // Warn about upcoming narrow zones / steep zones
+  for (const nz of NARROW_ZONES) {
+    if (!nz._warned && P.wy - nz.top < 300 && P.wy > nz.top) {
+      nz._warned = true;
+      showBanner('⚠ ' + (nz.label || 'NARROW PASS'), 2500);
+    }
+  }
+  for (const sz of STEEP_ZONES) {
+    if (!sz._warned && P.wy - sz.top < 250 && P.wy > sz.top) {
+      sz._warned = true;
+      showBanner('⚠ ' + (sz.label || 'STEEP GRADE'), 2200);
+    }
+  }
+}
+
+function crash() {
+  if (P.crashed) return;
+  P.crashed = true; P.crashTimer = 0;
+  G.falls++;
+  G.timerMs = Math.max(0, G.timerMs - CFG.CRASH_PENALTY);
+  spawnCrashParticles();
+  document.getElementById('hud-falls').textContent = '↓ ' + G.falls;
+  document.getElementById('crash-flash').classList.add('show');
+  setTimeout(() => document.getElementById('crash-flash').classList.remove('show'), 250);
+  showBanner('💥 CRASH  −' + (CFG.CRASH_PENALTY/1000).toFixed(0) + 's', 1600);
+}
+
+function respawn() {
+  P.wy = P.checkY + 40;
+  P.wx = roadCenterAt(P.wy);
+  P.vx = 0; P.speed = CFG.BASE_SPEED;
+  P.crashed = false; P.crashTimer = 0;
+  P.onIce = false; P.windForce = 0;
+  updateCamera();
+}
+
+function spawnCrashParticles() {
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = 1.5 + Math.random() * 3;
+    G.particles.push({
+      wx: P.wx, wy: P.wy,
+      vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
+      life: 1, decay: .025 + Math.random()*.02,
+      col: Math.random()<.5 ? '#4a9eff' : '#d4af37',
+      r: 2 + Math.random()*3,
+    });
+  }
+}
+
+function spawnWindParticles(dir) {
+  for (let i = 0; i < 20; i++) {
+    G.particles.push({
+      wx: P.wx + (Math.random()-.5)*200,
+      wy: P.wy + (Math.random()-.5)*100,
+      vx: dir * (3 + Math.random()*4), vy: (Math.random()-.5)*.5,
+      life: 1, decay: .018, col: 'rgba(180,220,255,.6)', r: 1.5,
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = G.particles.length-1; i >= 0; i--) {
+    const p = G.particles[i];
+    p.wx += p.vx; p.wy += p.vy;
+    p.life -= p.decay;
+    if (p.life <= 0) G.particles.splice(i,1);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  RENDERING
+// ════════════════════════════════════════════════════════════════════
+
+function worldToScreen(wx, wy) {
+  return {
+    sx: wx - G.camX + canvas.width/2,
+    sy: wy - G.camTop,
+  };
+}
+
+// Perspective scale: objects near player are larger
+function persp(sy) {
+  return Math.max(.22, Math.min(1.0, .28 + .72 * (sy / canvas.height)));
+}
+
+// ── 1. SKY ────────────────────────────────────────────────────────
+function drawSky() {
+  const alt = 1 - P.wy / CFG.LEVEL_H;
+  const H = canvas.height, W = canvas.width;
+  const horizonH = H * .42;
+
+  const g = ctx.createLinearGradient(0,0,0,horizonH);
+  g.addColorStop(0, alt > .6 ? '#04081a' : '#060b18');
+  g.addColorStop(.6, alt > .6 ? '#0a1535' : '#0d1a3a');
+  g.addColorStop(1, alt > .6 ? '#1a1250' : '#1a2848');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,horizonH);
+
+  // Stars (visible at high altitude)
+  if (alt > .4) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (alt-.4)*2.5);
+    G.stars.forEach(s => {
+      s.tw += .015;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(200,220,255,${s.a*(0.6+0.4*Math.sin(s.tw))})`;
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+}
+
+// ── 2. DISTANT PEAKS ─────────────────────────────────────────────
+function drawPeaks() {
+  const W = canvas.width, H = canvas.height;
+  const horizonY = H * .42;
+  const alt = 1 - P.wy / CFG.LEVEL_H;
+  const px = (G.camX - W/2) * .08; // subtle parallax
+
+  ctx.save(); ctx.translate(-px, 0);
+
+  // Far peaks
+  ctx.globalAlpha = .55 + alt*.2;
+  ctx.fillStyle = '#b0c4d8';
+  ctx.beginPath();
+  ctx.moveTo(-20, horizonY+10);
+  ctx.lineTo(W*.05, horizonY-90);
+  ctx.lineTo(W*.18, horizonY-55);
+  ctx.lineTo(W*.32, horizonY-130);  // tallest peak
+  ctx.lineTo(W*.44, horizonY-70);
+  ctx.lineTo(W*.56, horizonY-115);
+  ctx.lineTo(W*.68, horizonY-60);
+  ctx.lineTo(W*.82, horizonY-140);
+  ctx.lineTo(W*.94, horizonY-85);
+  ctx.lineTo(W+20, horizonY+10);
+  ctx.closePath(); ctx.fill();
+
+  // Snow caps on peaks
+  ctx.globalAlpha = .75 + alt*.15;
+  ctx.fillStyle = '#e8f4ff';
+  [[W*.32,horizonY-130,32],[W*.82,horizonY-140,35],[W*.56,horizonY-115,28],[W*.05,horizonY-90,22]].forEach(([px,py,s])=>{
+    ctx.beginPath();
+    ctx.moveTo(px-s, py+s*.6);
+    ctx.lineTo(px, py-2);
+    ctx.lineTo(px+s, py+s*.6);
+    ctx.closePath(); ctx.fill();
+  });
+
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+// ── 3. TERRAIN GRADIENT (fills screen behind road) ───────────────
+function drawTerrainBase() {
+  const H = canvas.height, W = canvas.width;
+  const horizonY = H * .42;
+  const alt = 1 - P.wy / CFG.LEVEL_H;
+
+  // Below horizon: snowy terrain fills the whole canvas
+  // Then road is drawn on top, cutting through it
+  const tg = ctx.createLinearGradient(0, horizonY, 0, H);
+
+  if (alt < .35) {
+    // Lower altitude: some dark rocky-green
+    tg.addColorStop(0,   '#526070');
+    tg.addColorStop(.35, '#708898');
+    tg.addColorStop(.7,  '#9ab0c0');
+    tg.addColorStop(1,   '#c0d0dc');
+  } else if (alt < .65) {
+    // Mid: mostly snow and rock
+    tg.addColorStop(0,   '#606878');
+    tg.addColorStop(.3,  '#8898a8');
+    tg.addColorStop(.65, '#aabccc');
+    tg.addColorStop(1,   '#c8d8e4');
+  } else {
+    // High: pure snow and ice
+    tg.addColorStop(0,   '#7080a0');
+    tg.addColorStop(.3,  '#99adc0');
+    tg.addColorStop(.65, '#c0d0e0');
+    tg.addColorStop(1,   '#d8e8f0');
+  }
+
+  ctx.fillStyle = tg;
+  ctx.fillRect(0, horizonY, W, H - horizonY);
+}
+
+// ── 4. ROAD (perspective scanlines) ──────────────────────────────
+function drawRoad() {
+  const W = canvas.width, H = canvas.height;
+  const step = 3;
+
+  // Collect road edges top-to-bottom
+  const leftPts = [], rightPts = [];
+
+  for (let sy = 0; sy <= H; sy += step) {
+    const wy = G.camTop + sy;
+    const sc = roadCenterAt(wy) - G.camX + W/2;   // screen X of road center
+    const rw = roadWidthAt(wy) * persp(sy);         // perspective-scaled width
+    leftPts.push([sc - rw/2, sy]);
+    rightPts.push([sc + rw/2, sy]);
+  }
+
+  // ── Road fill ──
+  const alt = 1 - P.wy / CFG.LEVEL_H;
+  // Road color: dark asphalt at base → packed snow → ice near summit
+  let roadCol;
+  if (alt > .75)      roadCol = '#3a4a5a'; // icy road
+  else if (alt > .45) roadCol = '#2e3342'; // snowy asphalt
+  else                roadCol = '#28282e'; // dry-ish mountain road
+
+  ctx.beginPath();
+  ctx.moveTo(leftPts[0][0], leftPts[0][1]);
+  leftPts.forEach(([x,y]) => ctx.lineTo(x,y));
+  for (let i = rightPts.length-1; i >= 0; i--) ctx.lineTo(rightPts[i][0], rightPts[i][1]);
+  ctx.closePath();
+  ctx.fillStyle = roadCol;
+  ctx.fill();
+
+  // ── Road edge lines (white) ──
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255,255,255,.55)';
+  ctx.beginPath();
+  leftPts.forEach(([x,y],i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+  ctx.stroke();
+  ctx.beginPath();
+  rightPts.forEach(([x,y],i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+  ctx.stroke();
+
+  // ── Snow berms on road edges (slightly wider, blends into terrain) ──
+  ctx.strokeStyle = 'rgba(220,235,245,.3)';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  leftPts.forEach(([x,y],i) => i===0 ? ctx.moveTo(x-3,y) : ctx.lineTo(x-3,y));
+  ctx.stroke();
+  ctx.beginPath();
+  rightPts.forEach(([x,y],i) => i===0 ? ctx.moveTo(x+3,y) : ctx.lineTo(x+3,y));
+  ctx.stroke();
+
+  // ── Centre dashes (gold) ──
+  ctx.setLineDash([14, 18]);
+  ctx.strokeStyle = 'rgba(212,175,55,.45)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < leftPts.length; i++) {
+    const cx = (leftPts[i][0] + rightPts[i][0]) / 2;
+    const cy = leftPts[i][1];
+    if (i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── Snow patches ON road (at higher altitude) ──
+  if (alt > .3) {
+    ctx.save(); ctx.globalAlpha = Math.min(.4, (alt-.3)*1.2);
+    ctx.fillStyle = 'rgba(220,235,248,.6)';
+    for (let i = 0; i < leftPts.length; i += 12) {
+      const sy = leftPts[i][1];
+      const wy = G.camTop + sy;
+      // Only draw patches at specific world positions (noise-like pattern)
+      if (Math.sin(wy*.13)*Math.sin(wy*.07) > .3) {
+        const cx = (leftPts[i][0]+rightPts[i][0])*.5 + Math.sin(wy*.3)*20;
+        const rw = (rightPts[i][0]-leftPts[i][0])*.35;
+        ctx.beginPath(); ctx.ellipse(cx, sy, rw, 4, 0, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// ── 5. SKID MARKS ─────────────────────────────────────────────────
+function drawSkids() {
+  P.skids.forEach(s => {
+    const {sx,sy} = worldToScreen(s.wx, s.wy);
+    if (sy < 0 || sy > canvas.height) return;
+    ctx.globalAlpha = s.a;
+    ctx.strokeStyle = '#1a1a28';
+    ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sx-3,sy); ctx.lineTo(sx+3,sy); ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+}
+
+// ── 6. TERRAIN DECORATION (rocks, pine trees) ─────────────────────
+// Pre-generated decorative terrain elements (drawn outside road)
+const TERRAIN_DECO = (() => {
+  const rng = seeded(0xDEC0); const items = [];
+  for (let i = 0; i < 80; i++) {
+    const wy  = 200 + rng() * (CFG.LEVEL_H - 400);
+    const alt = 1 - wy/CFG.LEVEL_H;
+    const side = rng() < .5 ? -1 : 1;   // left or right of road
+    const offX = (.55 + rng()*.4) * side; // normalized offset from road center
+    items.push({
+      wy, offX,
+      type: alt < .35 && rng()<.6 ? 'tree' : 'rock',
+      size: 8 + rng() * 18,
+    });
+  }
+  return items;
+})();
+
+function drawTerrainDeco() {
+  TERRAIN_DECO.forEach(d => {
+    const sy = d.wy - G.camTop;
+    if (sy < -40 || sy > canvas.height + 40) return;
+    const rc = roadCenterAt(d.wy);
+    const rw = roadWidthAt(d.wy);
+    const wx = rc + d.offX * (rw/2 + d.size*1.5);
+    const {sx} = worldToScreen(wx, d.wy);
+    const sc = persp(sy);
+    const sz = d.size * sc;
+    ctx.save(); ctx.translate(sx, sy);
+
+    if (d.type === 'tree') {
+      ctx.fillStyle = '#2a3a2a';
+      ctx.beginPath(); ctx.moveTo(0,-sz*2.5); ctx.lineTo(-sz,0); ctx.lineTo(sz,0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3a4a3a';
+      ctx.beginPath(); ctx.moveTo(0,-sz*1.8); ctx.lineTo(-sz*.7,sz*.4); ctx.lineTo(sz*.7,sz*.4); ctx.closePath(); ctx.fill();
+      // snow cap
+      ctx.fillStyle = 'rgba(220,235,248,.7)';
+      ctx.beginPath(); ctx.moveTo(0,-sz*2.5); ctx.lineTo(-sz*.4,-sz*.8); ctx.lineTo(sz*.4,-sz*.8); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.fillStyle = '#505868';
+      ctx.beginPath(); ctx.ellipse(0, 0, sz, sz*.6, 0, 0, Math.PI*2); ctx.fill();
+      // snow on top
+      ctx.fillStyle = 'rgba(220,235,248,.65)';
+      ctx.beginPath(); ctx.ellipse(0,-sz*.2, sz*.7, sz*.3, 0, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+// ── 7. OBSTACLES ON ROAD ──────────────────────────────────────────
+function drawObstacles() {
+  OBSTACLES.forEach(ob => {
+    if (ob.hit && ob.type !== 'wind') return;
+    const sy = ob.wy - G.camTop;
+    if (sy < -60 || sy > canvas.height + 30) return;
+    const sc = persp(sy);
+
+    const rc = roadCenterAt(ob.wy);
+    const rw = roadWidthAt(ob.wy);
+    const wx = rc + (ob.xOff||0) * rw * .45;
+    const {sx} = worldToScreen(wx, ob.wy);
+
+    if (ob.type === 'rock') {
+      const r = (ob.r||16) * sc;
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.beginPath(); ctx.ellipse(sx+r*.3, sy+r*.4, r*1.1, r*.5, 0, 0, Math.PI*2); ctx.fill();
+      // Rock body
+      const rg = ctx.createRadialGradient(sx-r*.3,sy-r*.3,0, sx,sy,r);
+      rg.addColorStop(0, '#707888'); rg.addColorStop(1, '#383f4c');
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2); ctx.fill();
+      // Snow on top
+      ctx.fillStyle = 'rgba(225,238,248,.75)';
+      ctx.beginPath(); ctx.ellipse(sx, sy-r*.35, r*.7, r*.3, 0, 0, Math.PI*2); ctx.fill();
+
+    } else if (ob.type === 'ice') {
+      const r = (ob.r||50) * sc;
+      const ig = ctx.createRadialGradient(sx,sy,0, sx,sy,r);
+      ig.addColorStop(0, 'rgba(160,220,255,.55)');
+      ig.addColorStop(.6,'rgba(120,190,240,.28)');
+      ig.addColorStop(1, 'rgba(100,160,220,0)');
+      ctx.fillStyle = ig;
+      ctx.beginPath(); ctx.ellipse(sx, sy, r, r*.4, 0, 0, Math.PI*2); ctx.fill();
+      // Gleam
+      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.beginPath(); ctx.ellipse(sx-r*.2, sy-r*.1, r*.2, r*.08, -.3, 0, Math.PI*2); ctx.fill();
+
+    } else if (ob.type === 'drift') {
+      const r = (ob.r||45) * sc;
+      ctx.fillStyle = 'rgba(220,235,248,.5)';
+      ctx.beginPath(); ctx.ellipse(sx, sy, r, r*.45, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(200,220,238,.7)';
+      ctx.beginPath(); ctx.ellipse(sx, sy-r*.1, r*.7, r*.3, 0, 0, Math.PI*2); ctx.fill();
+    }
+  });
+}
+
+// ── 8. PRAYER FLAGS (at checkpoints + summit approach) ───────────
+function drawPrayerFlags() {
+  const COLS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff'];
+  const t = G.frame;
+
+  // Draw flags at each narrow zone entry (since checkpoints are auto-saved)
+  [[5600,'NZ1'],[4100,'NZ2'],[2600,'NZ3'],[1400,'NZ4']].forEach(([flagWY]) => {
+    const sy = flagWY - G.camTop;
+    if (sy < -20 || sy > canvas.height + 20) return;
+    const sc_  = persp(sy);
+    const rc   = roadCenterAt(flagWY) - G.camX + canvas.width/2;
+    const rw2  = roadWidthAt(flagWY) * sc_ / 2;
+    const lx   = rc - rw2 - 18*sc_;
+    const rx   = rc + rw2 + 18*sc_;
+
+    // String
+    ctx.strokeStyle = 'rgba(197,193,185,.3)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, sy); ctx.lineTo(rx, sy); ctx.stroke();
+
+    // Flag triangles
+    for (let i=0;i<6;i++){
+      const fx = lx + (rx-lx)*i/5;
+      const fw = 9*sc_, fh = 7*sc_;
+      ctx.save(); ctx.translate(fx, sy);
+      ctx.rotate(Math.sin(t*.05+i*.7)*.12);
+      ctx.globalAlpha = .55;
+      ctx.fillStyle = COLS[i%COLS.length];
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(fw,0); ctx.lineTo(fw*.5,fh); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha=1;
+  });
+}
+
+// ── 9. SUMMIT PORTAL ─────────────────────────────────────────────
+function drawSummitPortal() {
+  const sy = 200 - G.camTop; // summit worldY = 200
+  if (sy < -80 || sy > canvas.height + 40) return;
+  const cx = roadCenterAt(200) - G.camX + canvas.width/2;
+  const t  = G.frame;
+  const pulse = .5 + .5*Math.sin(t*.06);
+  const r = 28 + pulse*10;
+
+  for (let i=3;i>=0;i--){
+    ctx.beginPath(); ctx.arc(cx, sy, r+i*11, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(212,175,55,${(.12-i*.025)*(0.7+0.3*pulse)})`;
+    ctx.lineWidth=2; ctx.stroke();
+  }
+  ctx.save(); ctx.translate(cx,sy); ctx.rotate(t*.014);
+  for(let i=0;i<6;i++){
+    const a=i*Math.PI/3;
+    ctx.fillStyle=`rgba(212,175,55,${.6+.3*pulse})`;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*r,Math.sin(a)*r,3,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+  const pg=ctx.createRadialGradient(cx,sy,0,cx,sy,r);
+  pg.addColorStop(0,`rgba(255,245,190,${.4+.2*pulse})`);
+  pg.addColorStop(.6,`rgba(212,175,55,${.12+.08*pulse})`);
+  pg.addColorStop(1,'rgba(212,175,55,0)');
+  ctx.beginPath(); ctx.arc(cx,sy,r,0,Math.PI*2); ctx.fillStyle=pg; ctx.fill();
+  ctx.fillStyle=`rgba(255,245,200,${.85+.15*pulse})`;
+  ctx.font=`${16+pulse*5}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('✦',cx,sy);
+}
+
+// ── 10. ELARA ────────────────────────────────────────────────────
+function drawElara() {
+  const sx = P.wx - G.camX + canvas.width/2;
+  const sy = P.wy - G.camTop;
+  const t  = P.animT;
+  const face = P.facing;
+
+  ctx.save(); ctx.translate(sx, sy);
+
+  // Glow aura
+  const glow = P.onIce ? .9 : (P.windForce !== 0 ? .8 : .35);
+  const glowCol = P.onIce ? 'rgba(100,200,255,' : 'rgba(87,94,207,';
+  const gg = ctx.createRadialGradient(0,0,0,0,0,30);
+  gg.addColorStop(0, glowCol+(glow*.25)+')');
+  gg.addColorStop(1, glowCol+'0)');
+  ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(0,0,32,0,Math.PI*2); ctx.fill();
+
+  ctx.scale(face,1);
+
+  // ── Bicycle ──
+  const WR = 13; const FWX=15, RWX=-15, WY=12;
+
+  // Wheels
+  ctx.strokeStyle='#2d7dd2'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.arc(FWX,WY,WR,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(RWX,WY,WR,0,Math.PI*2); ctx.stroke();
+
+  // Spokes (animated)
+  const sa = (t*.2)%(Math.PI*2);
+  ctx.lineWidth=1; ctx.strokeStyle='rgba(74,158,255,.4)';
+  [FWX,RWX].forEach(wx=>{
+    for(let k=0;k<4;k++){
+      const a=sa+k*Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(wx+Math.cos(a)*WR*.85,WY+Math.sin(a)*WR*.85);
+      ctx.lineTo(wx-Math.cos(a)*WR*.85,WY-Math.sin(a)*WR*.85);
+      ctx.stroke();
+    }
+  });
+
+  // Frame
+  ctx.strokeStyle='#2d7dd2'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(RWX,WY-1); ctx.lineTo(0,-4); ctx.lineTo(FWX,WY-1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(RWX,WY-1); ctx.lineTo(2,-16); ctx.lineTo(0,-4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2,-16); ctx.lineTo(FWX-2,-8); ctx.stroke();
+  ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(FWX-2,-8); ctx.lineTo(FWX+4,-14); ctx.stroke();
+  // Saddle
+  ctx.fillStyle='#444'; ctx.lineWidth=1; ctx.strokeStyle='#333';
+  ctx.beginPath(); ctx.roundRect(-1,-20,10,3,1.5); ctx.fill(); ctx.stroke();
+
+  // ── Legs ──
+  const pp = t * .18;
+  ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.strokeStyle='rgba(60,60,85,.85)';
+  const bkx=-8+Math.cos(pp+Math.PI)*8, bky=4+Math.sin(pp+Math.PI)*5;
+  ctx.beginPath(); ctx.moveTo(0,-4); ctx.lineTo(bkx,bky); ctx.lineTo(bkx+3,bky+6); ctx.stroke();
+  ctx.strokeStyle='#ddeeff';
+  const fkx=6+Math.cos(pp)*8, fky=4+Math.sin(pp)*5;
+  ctx.beginPath(); ctx.moveTo(0,-4); ctx.lineTo(fkx,fky); ctx.lineTo(fkx+2,fky+6); ctx.stroke();
+
+  // ── Torso & arms ──
+  ctx.strokeStyle='#e8f4ff'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.moveTo(0,-4); ctx.lineTo(8,-18); ctx.stroke();
+  ctx.lineWidth=3; ctx.strokeStyle='#c8e0f0';
+  ctx.beginPath(); ctx.moveTo(8,-14); ctx.lineTo(FWX+2,-12); ctx.stroke();
+  // Jersey
+  ctx.fillStyle='#e8f4ff';
+  ctx.beginPath(); ctx.ellipse(5,-12,5,7,-.3,0,Math.PI*2); ctx.fill();
+  // Gold armband (card detail)
+  ctx.fillStyle='#d4af37';
+  ctx.beginPath(); ctx.ellipse(10,-10,3,2,-.3,0,Math.PI*2); ctx.fill();
+
+  // ── Head ──
+  const HX=10, HY=-22;
+  ctx.fillStyle='#e8c8a0';
+  ctx.beginPath(); ctx.arc(HX,HY,6,0,Math.PI*2); ctx.fill();
+  // Hair flowing back
+  ctx.fillStyle='#c8a060';
+  ctx.beginPath();
+  ctx.moveTo(HX-2,HY-4); ctx.quadraticCurveTo(HX-10,HY-2,HX-20,HY);
+  ctx.quadraticCurveTo(HX-14,HY+5,HX-2,HY+2); ctx.closePath(); ctx.fill();
+  // Wind-blown hair strand
+  ctx.strokeStyle='#dbb870'; ctx.lineWidth=1.5; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(HX-2,HY-2);
+  ctx.quadraticCurveTo(HX-12+Math.sin(t*.1)*2, HY-1, HX-20+Math.sin(t*.13)*3, HY+3);
+  ctx.stroke();
+  // Eye
+  ctx.fillStyle='#5c3d20';
+  ctx.beginPath(); ctx.arc(HX+2,HY-1,1,0,Math.PI*2); ctx.fill();
+  // Helmet arc
+  ctx.strokeStyle='#333'; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.arc(HX,HY-1,6,Math.PI*1.1,Math.PI*1.9); ctx.stroke();
+
+  // ── Arcane wind trails ──
+  ctx.strokeStyle='rgba(87,94,207,.3)'; ctx.lineWidth=1;
+  for(let i=0;i<3;i++){
+    const tx=-16-i*9, ty=-10+Math.sin(t*.2+i)*5;
+    ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx-10,ty+Math.sin(t*.15+i*1.2)*3); ctx.stroke();
+  }
+
+  // Ice shimmer when on ice
+  if (P.onIce) {
+    ctx.strokeStyle='rgba(140,220,255,.5)'; ctx.lineWidth=1;
+    for(let i=0;i<5;i++){
+      const a = (t*.15+i*1.26) % (Math.PI*2);
+      ctx.beginPath(); ctx.arc(0,0,18+i*4,a,a+.6); ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+// ── 11. PARTICLES ────────────────────────────────────────────────
+function drawParticles() {
+  G.particles.forEach(p => {
+    const {sx,sy} = worldToScreen(p.wx, p.wy);
+    if (sy < -10 || sy > canvas.height+10) return;
+    ctx.globalAlpha = p.life;
+    ctx.beginPath(); ctx.arc(sx, sy, p.r, 0, Math.PI*2);
+    ctx.fillStyle = p.col; ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+// ── 12. SNOW PARTICLES ───────────────────────────────────────────
+function drawSnow() {
+  const alt = 1 - P.wy / CFG.LEVEL_H;
+  ctx.fillStyle = 'rgba(220,236,250,.7)';
+  G.snowPtcl.forEach(s => {
+    ctx.globalAlpha = s.a * (.5 + alt*.5);
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+// ── 13. LIGHTNING / ARCANE FLASH ─────────────────────────────────
+function drawLightning() {
+  if (!G.lightning.active) return;
+  G.lightning.alpha *= .88;
+  if (G.lightning.alpha < .02) { G.lightning.active=false; return; }
+  ctx.fillStyle = `rgba(87,94,207,${G.lightning.alpha*.18})`;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Brief lightning bolt
+  if (G.lightning.alpha > .5) {
+    ctx.strokeStyle = `rgba(180,210,255,${G.lightning.alpha*.6})`;
+    ctx.lineWidth=2;
+    const bx = canvas.width/2 + (Math.random()-.5)*80;
+    ctx.beginPath();
+    ctx.moveTo(bx, 0);
+    ctx.lineTo(bx+(Math.random()-.5)*30, canvas.height*.2);
+    ctx.lineTo(bx+(Math.random()-.5)*40, canvas.height*.35);
+    ctx.stroke();
+  }
+}
+
+// ── 14. FOG overlay at high altitude ─────────────────────────────
+function drawFog() {
+  const alt = 1 - P.wy / CFG.LEVEL_H;
+  if (alt < .55) return;
+  const fogA = Math.min(.38, (alt-.55)*1.1);
+  const fg = ctx.createLinearGradient(0,0,0,canvas.height);
+  fg.addColorStop(0,   `rgba(180,200,220,${fogA})`);
+  fg.addColorStop(.5,  `rgba(180,200,220,${fogA*.5})`);
+  fg.addColorStop(1,    'rgba(180,200,220,0)');
+  ctx.fillStyle=fg;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+// ── 15. STEEP GRADE INDICATOR ────────────────────────────────────
+function drawSteepIndicator() {
+  if (!G.steep.active) return;
+  ctx.save();
+  ctx.globalAlpha = .65;
+  ctx.fillStyle = '#ffcc60';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('▲ ' + G.steep.label, 14, canvas.height - 20);
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  HUD UPDATES
+// ════════════════════════════════════════════════════════════════════
+function buildSpeedBars() {
+  const wrap = document.getElementById('hud-speed');
+  wrap.innerHTML = '';
+  for (let i=0;i<5;i++){
+    const b=document.createElement('div'); b.className='speed-bar';
+    b.style.height=(6+i*3)+'px'; wrap.appendChild(b);
+  }
+}
+
+function updateHUD() {
+  // Timer
+  const secs = Math.max(0, G.timerMs/1000);
+  const m = Math.floor(secs/60), s = Math.floor(secs%60);
+  const timerEl = document.getElementById('hud-timer');
+  timerEl.textContent = m+':'+(s<10?'0':'')+s;
+  timerEl.classList.toggle('urgent', secs < 30);
+
+  // Progress bar
+  const prog = Math.max(0, Math.min(1, 1 - (P.wy-200)/(CFG.LEVEL_H-300)));
+  document.getElementById('hud-fill').style.width = (prog*100).toFixed(1)+'%';
+
+  // Speed bars
+  const bars = document.getElementById('hud-speed').children;
+  const lvl = Math.round((P.speed / CFG.MAX_SPEED) * 5);
+  for (let i=0;i<5;i++){
+    bars[i].style.background = i < lvl
+      ? (P.onIce ? '#60c8ff' : '#575ECF')
+      : 'rgba(87,94,207,.2)';
+  }
+}
+
+// Challenge banner
+function showBanner(text, duration=2000) {
+  const el = document.getElementById('challenge');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  GAME STATE
+// ════════════════════════════════════════════════════════════════════
+function win() {
+  if (G.phase !== 'play') return;
+  G.phase = 'win';
+  document.getElementById('hud').style.display='none';
+  const secs = G.timerMs/1000;
+  const m=Math.floor(secs/60), s=Math.floor(secs%60);
+  document.getElementById('win-time').textContent = m+':'+(s<10?'0':'')+s;
+  document.getElementById('win-falls').textContent = G.falls;
+  document.getElementById('scr-win').classList.remove('gone');
+}
+
+function lose() {
+  if (G.phase !== 'play') return;
+  G.phase = 'lose';
+  document.getElementById('hud').style.display='none';
+  const prog = Math.max(0,Math.min(1,1-(P.wy-200)/(CFG.LEVEL_H-300)));
+  document.getElementById('lose-pct').textContent = Math.round(prog*100)+'%';
+  document.getElementById('lose-falls').textContent = G.falls;
+  document.getElementById('scr-lose').classList.remove('gone');
+}
+
+function startGame() {
+  G.phase='play'; G.frame=0;
+  G.timerMs = CFG.TIME_LIMIT * 1000;
+  G.lastTime = performance.now();
+  G.falls=0; G.particles=[]; G.lightning={active:false,alpha:0};
+  G.challenge={text:'',timer:0}; G.steep={active:false,label:''};
+
+  NARROW_ZONES.forEach(nz => delete nz._warned);
+  STEEP_ZONES.forEach(sz => delete sz._warned);
+
+  document.getElementById('scr-start').classList.add('gone');
+  document.getElementById('scr-win').classList.add('gone');
+  document.getElementById('scr-lose').classList.add('gone');
+  document.getElementById('hud').style.display='block';
+  document.getElementById('hud-falls').textContent='↓ 0';
+
+  generateObstacles();
+  initPlayer();
+  initStars();
+  initSnow();
+  buildSpeedBars();
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  INPUT
+// ════════════════════════════════════════════════════════════════════
+const K  = { left:false, right:false, up:false, down:false };
+const TH = { left:false, right:false, up:false, down:false, pedal:false };
+
+document.addEventListener('keydown', e => {
+  if (G.phase !== 'play') return;
+  const prevent = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '];
+  if (prevent.includes(e.key)) e.preventDefault();
+  if (e.key==='ArrowLeft'  || e.key==='a') K.left  = true;
+  if (e.key==='ArrowRight' || e.key==='d') K.right = true;
+  if (e.key==='ArrowUp'    || e.key==='w' || e.key===' ') K.up = true;
+  if (e.key==='ArrowDown'  || e.key==='s') K.down  = true;
+});
+document.addEventListener('keyup', e => {
+  if (e.key==='ArrowLeft'  || e.key==='a') K.left  = false;
+  if (e.key==='ArrowRight' || e.key==='d') K.right = false;
+  if (e.key==='ArrowUp'    || e.key==='w' || e.key===' ') K.up  = false;
+  if (e.key==='ArrowDown'  || e.key==='s') K.down  = false;
+});
+
+// Touch controls
+const wrap = document.getElementById('wrap');
+let tSX=0, tSY=0, tJump=false;
+
+wrap.addEventListener('touchstart', e => {
+  if (G.phase !== 'play') return;
+  e.preventDefault();
+  const t=e.touches[0];
+  tSX=t.clientX; tSY=t.clientY; tJump=false;
+  const W = wrap.offsetWidth;
+  const rx = t.clientX - wrap.getBoundingClientRect().left;
+  if      (rx < W*.38) { TH.left=true;  document.getElementById('tz-left').classList.add('on'); }
+  else if (rx > W*.62) { TH.right=true; document.getElementById('tz-right').classList.add('on'); }
+  else                   TH.pedal=true;  // centre tap = pedal boost
+}, {passive:false});
+
+wrap.addEventListener('touchmove', e => {
+  if (G.phase !== 'play') return;
+  e.preventDefault();
+  const t=e.touches[0];
+  const dy=t.clientY-tSY, dx=t.clientX-tSX;
+  if (!tJump && dy < -38 && Math.abs(dy)>Math.abs(dx)) {
+    TH.up=true; tJump=true; tSY=t.clientY;
+    setTimeout(()=>TH.up=false, 180);
+  }
+  if (dy > 38 && Math.abs(dy)>Math.abs(dx)) {
+    TH.down=true; tSY=t.clientY;
+    setTimeout(()=>TH.down=false, 150);
+  }
+}, {passive:false});
+
+wrap.addEventListener('touchend', e => {
+  e.preventDefault();
+  TH.left=TH.right=TH.pedal=false;
+  document.getElementById('tz-left').classList.remove('on');
+  document.getElementById('tz-right').classList.remove('on');
+}, {passive:false});
+
+// Screen buttons
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', startGame);
+document.getElementById('btn-retry').addEventListener('click', startGame);
+
+// ════════════════════════════════════════════════════════════════════
+//  MAIN LOOP
+// ════════════════════════════════════════════════════════════════════
+function loop(now) {
+  requestAnimationFrame(loop);
+
+  if (G.phase === 'play') {
+    const dt = Math.min(50, now - G.lastTime); // cap delta to avoid spiral
+    G.lastTime = now;
+    G.frame++;
+
+    // Timer countdown
+    G.timerMs -= dt;
+    if (G.timerMs <= 0) { G.timerMs=0; lose(); }
+
+    // Physics
+    updatePlayer(dt);
+    updateParticles();
+    updateSnow();
+
+    // Draw
+    drawSky();
+    drawPeaks();
+    drawTerrainBase();
+    drawRoad();
+    drawSkids();
+    drawTerrainDeco();
+    drawObstacles();
+    drawPrayerFlags();
+    drawSummitPortal();
+    drawParticles();
+    drawSnow();
+    drawElara();
+    drawLightning();
+    drawFog();
+    drawSteepIndicator();
+
+    updateHUD();
+  } else {
+    // Animate background on menus
+    G.frame++;
+    updateSnow();
+    drawSky();
+    drawPeaks();
+    drawTerrainBase();
+    drawSnow();
+  }
+}
+
+// Boot
+initStars();
+initSnow();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
