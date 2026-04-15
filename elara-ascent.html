@@ -128,6 +128,15 @@
     }
     #crash-flash.show { opacity: 1; }
   </style>
+<!-- Error handler in its own script block — survives main script parse failures -->
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:16px;z-index:999999;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-all';
+  d.textContent = 'JS ERROR (line ' + line + '): ' + msg;
+  document.body.appendChild(d);
+};
+</script>
 </head>
 <body>
 <div id="wrap">
@@ -195,15 +204,6 @@
 //  ARCANE ASCEND: ELARA'S ASCENT — Mountain Road Climbing Game
 //  Link this page from the Arcane Ascend website to play.
 // ════════════════════════════════════════════════════════════════════
-
-// Surface any JS errors visually (remove after debugging)
-window.onerror = function(msg, src, line, col, err) {
-  var d = document.createElement('div');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:14px 16px;z-index:999999;font-family:monospace;font-size:12px;line-height:1.5;white-space:pre-wrap';
-  d.textContent = 'JS ERROR: ' + msg + '\nLine: ' + line + '\n' + (err && err.stack ? err.stack : '');
-  document.body.appendChild(d);
-  return false;
-};
 
 // ── POLYFILL ──────────────────────────────────────────────────────
 if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -1396,6 +1396,44 @@ function loop(now) {
 initStars();
 initSnow();
 requestAnimationFrame(loop);
+</script>
+
+<!-- Button binding — separate block so it works even if main script had errors -->
+<script>
+(function() {
+  function tryStart() {
+    if (typeof startGame !== 'function') {
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:#c0392b;color:#fff;padding:20px 28px;z-index:999999;font-family:monospace;font-size:13px;border-radius:8px;text-align:center';
+      d.textContent = 'startGame not defined — game script failed to load.\nCheck the JS ERROR banner above.';
+      document.body.appendChild(d);
+      return;
+    }
+    try { startGame(); }
+    catch(e) {
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:#c0392b;color:#fff;padding:20px 28px;z-index:999999;font-family:monospace;font-size:13px;border-radius:8px;text-align:center';
+      d.textContent = 'startGame error: ' + e.message;
+      document.body.appendChild(d);
+    }
+  }
+
+  ['btn-start', 'btn-restart', 'btn-retry'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    var lastFired = 0;
+    btn.addEventListener('touchend', function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      var now = Date.now();
+      if (now - lastFired > 400) { lastFired = now; tryStart(); }
+    }, {passive: false});
+    btn.addEventListener('click', function() {
+      var now = Date.now();
+      if (now - lastFired > 400) { lastFired = now; tryStart(); }
+    });
+  });
+})();
 </script>
 </body>
 </html>
