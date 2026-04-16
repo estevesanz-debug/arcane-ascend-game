@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#060b18">
+  <title>Arcane Ascend: The Inner Climb</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #030609;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      color: #c5c1b9; touch-action: none;
+      user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #wrap {
+      position: fixed; left: 50%; top: 0;
+      transform: translateX(-50%);
+      width: min(430px, 100vw); height: 100vh; overflow: hidden;
+    }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    /* ── OVERLAY SCREENS ── */
+    .screen {
+      position: absolute; inset: 0; z-index: 20;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 36px 28px; text-align: center;
+      background: rgba(4,7,20,.94);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      transition: opacity .6s ease;
+    }
+    .screen.gone { opacity: 0; pointer-events: none; visibility: hidden; }
+    .orb {
+      width: 60px; height: 60px; border-radius: 50%; margin-bottom: 22px;
+      background: radial-gradient(circle at 35% 35%, #a8d4ff 0%, #575ECF 55%, #060b18 100%);
+      box-shadow: 0 0 36px rgba(87,94,207,.55), 0 0 72px rgba(87,94,207,.22);
+      animation: orbPulse 3s ease-in-out infinite;
+    }
+    .orb.gold {
+      background: radial-gradient(circle at 35% 35%, #fff0b0 0%, #d4af37 55%, #1a0c00 100%);
+      box-shadow: 0 0 36px rgba(212,175,55,.6), 0 0 72px rgba(212,175,55,.25);
+    }
+    .orb.dim {
+      background: radial-gradient(circle at 35% 35%, #887788 0%, #443355 55%, #060b18 100%);
+      box-shadow: 0 0 36px rgba(100,60,100,.4);
+    }
+    @keyframes orbPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    .title {
+      font-size: clamp(20px, 6vw, 32px); font-weight: 800;
+      letter-spacing: .1em; text-transform: uppercase;
+      background: linear-gradient(135deg, #a8d4ff 0%, #575ECF 45%, #d4af37 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      line-height: 1.1; margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: clamp(10px,3vw,13px); color: rgba(197,193,185,.5);
+      letter-spacing: .22em; text-transform: uppercase; font-style: italic; margin-bottom: 24px;
+    }
+    .atmo {
+      font-size: clamp(13px,3.5vw,15px); color: rgba(197,193,185,.65);
+      max-width: 300px; line-height: 1.7; margin-bottom: 28px; font-style: italic;
+    }
+    .poem {
+      font-size: clamp(13px,3.5vw,15px); color: #d4af37;
+      max-width: 290px; line-height: 1.7; margin-bottom: 28px; font-style: italic;
+      text-shadow: 0 0 18px rgba(212,175,55,.35);
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1b3568 0%, #2c4ea0 55%, #1b3568 100%);
+      border: 1px solid rgba(87,94,207,.5); border-radius: 12px;
+      color: #a8d4ff; font-size: clamp(13px,3.8vw,16px); font-weight: 700;
+      letter-spacing: .14em; text-transform: uppercase;
+      padding: 13px 34px; cursor: pointer; outline: none;
+      box-shadow: 0 0 22px rgba(87,94,207,.28), 0 4px 14px rgba(0,0,0,.5);
+      transition: all .18s ease; min-width: 170px;
+    }
+    .btn:hover { background: linear-gradient(135deg,#2c4ea0,#3d60c0,#2c4ea0); transform: translateY(-1px); }
+    .btn:active { transform: scale(.97); }
+    .hint {
+      margin-top: 18px; font-size: 10px; color: rgba(197,193,185,.28);
+      letter-spacing: .12em; text-transform: uppercase; line-height: 2;
+    }
+    .badge {
+      position: absolute; bottom: 14px; right: 16px;
+      font-size: 9px; color: rgba(197,193,185,.18); letter-spacing: .14em;
+    }
+
+    /* ── END SCREEN STATS ── */
+    .end-stats {
+      display: flex; gap: 18px; margin-bottom: 24px;
+    }
+    .end-stat { text-align: center; }
+    .end-stat-val { font-size: 18px; font-weight: 700; color: #a8d4ff; }
+    .end-stat-lbl {
+      font-size: 8px; letter-spacing: .15em; text-transform: uppercase;
+      color: rgba(197,193,185,.35); margin-top: 2px;
+    }
+
+    /* ── TEXT FRAGMENT (in-game) ── */
+    #text-frag {
+      position: absolute; bottom: 18%; left: 50%; transform: translateX(-50%);
+      z-index: 10; pointer-events: none; text-align: center;
+      font-size: clamp(12px,3.2vw,15px); font-style: italic;
+      color: rgba(197,193,185,.75); letter-spacing: .06em;
+      line-height: 1.6; max-width: 300px;
+      text-shadow: 0 0 20px rgba(6,11,24,.9);
+      opacity: 0; transition: opacity .8s ease;
+    }
+    #text-frag.show { opacity: 1; }
+
+    /* ── GATE OVERLAY ── */
+    #gate-overlay {
+      position: absolute; inset: 0; z-index: 15;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 36px 28px; text-align: center;
+      background: rgba(4,7,20,.7);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      opacity: 0; pointer-events: none;
+      transition: opacity .6s ease;
+    }
+    #gate-overlay.show { opacity: 1; pointer-events: auto; }
+    .gate-title {
+      font-size: clamp(16px,5vw,24px); font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: #d4af37; margin-bottom: 12px;
+      text-shadow: 0 0 20px rgba(212,175,55,.4);
+    }
+    .gate-text {
+      font-size: clamp(13px,3.5vw,15px); color: rgba(197,193,185,.7);
+      font-style: italic; max-width: 280px; line-height: 1.7; margin-bottom: 20px;
+    }
+    .gate-result {
+      font-size: clamp(12px,3vw,14px); color: #a8d4ff;
+      font-style: italic; max-width: 260px; line-height: 1.6; margin-bottom: 16px;
+      min-height: 40px;
+    }
+    .gate-prompt {
+      font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+      color: rgba(197,193,185,.35); margin-top: 8px;
+    }
+
+    /* ── STATE INDICATORS (subtle orbs at bottom) ── */
+    #state-bar {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 8; pointer-events: none;
+      display: none; gap: 16px; align-items: center;
+    }
+    .state-orb {
+      width: 8px; height: 8px; border-radius: 50%;
+      transition: background .4s, box-shadow .4s;
+    }
+    #progress-bar {
+      position: absolute; right: 10px; top: 10%; bottom: 10%;
+      z-index: 8; pointer-events: none; width: 3px; display: none;
+    }
+    .prog-track {
+      width: 100%; height: 100%; background: rgba(255,255,255,.04);
+      border-radius: 2px; position: relative;
+    }
+    .prog-fill {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, #575ECF, #a8d4ff);
+      border-radius: 2px; transition: height .3s;
+      box-shadow: 0 0 6px rgba(87,94,207,.4);
+    }
+    .prog-marker {
+      position: absolute; left: -3px; width: 9px; height: 2px;
+      background: rgba(212,175,55,.4); border-radius: 1px;
+    }
+  </style>
+<!-- Error handler -->
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:16px;z-index:999999;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-all';
+  d.textContent = 'JS ERROR (line ' + line + '): ' + msg;
+  document.body.appendChild(d);
+};
+</script>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="gc"></canvas>
+
+  <!-- Text fragment overlay -->
+  <div id="text-frag"></div>
+
+  <!-- Gate overlay -->
+  <div id="gate-overlay">
+    <div class="gate-title" id="gate-title"></div>
+    <div class="gate-text" id="gate-text"></div>
+    <div class="gate-result" id="gate-result"></div>
+    <div class="gate-prompt" id="gate-prompt"></div>
+  </div>
+
+  <!-- State indicators -->
+  <div id="state-bar">
+    <div class="state-orb" id="orb-composure" title="Composure"></div>
+    <div class="state-orb" id="orb-momentum" title="Momentum"></div>
+    <div class="state-orb" id="orb-tension" title="Tension"></div>
+    <div class="state-orb" id="orb-faith" title="Faith"></div>
+  </div>
+
+  <!-- Progress bar -->
+  <div id="progress-bar">
+    <div class="prog-track">
+      <div class="prog-fill" id="prog-fill"></div>
+      <div class="prog-marker" style="bottom:20%"></div>
+      <div class="prog-marker" style="bottom:40%"></div>
+      <div class="prog-marker" style="bottom:60%"></div>
+      <div class="prog-marker" style="bottom:80%"></div>
+    </div>
+  </div>
+
+  <!-- Start Screen -->
+  <div class="screen" id="scr-start">
+    <div class="orb"></div>
+    <div class="title">The Inner Climb</div>
+    <div class="subtitle">Arcane Ascend · Elara Windmonk</div>
+    <div class="atmo">
+      A mountain pass transformed into a test of inward form.<br><br>
+      Ascend not by force, but by the rhythm you keep.
+    </div>
+    <button class="btn" id="btn-start">Enter the Pass</button>
+    <div class="hint">
+      Mobile: swipe ←→ shift · ↑ surge · ↓ reflect<br>
+      Desktop: arrow keys
+    </div>
+    <span class="badge">028 / 120 · R</span>
+  </div>
+
+  <!-- End Screen -->
+  <div class="screen gone" id="scr-end">
+    <div class="orb gold" id="end-orb"></div>
+    <div class="title" id="end-title"></div>
+    <div class="subtitle" id="end-subtitle"></div>
+    <div class="poem" id="end-poem"></div>
+    <div class="end-stats" id="end-stats"></div>
+    <button class="btn" id="btn-again">Ascend Again</button>
+    <span class="badge">Zen of the Mountains</span>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+//  ARCANE ASCEND: THE INNER CLIMB
+//  A philosophical ascent through Kierkegaard's stages of existence.
+//  Elara Windmonk ascends a mountain pass — not through force,
+//  but through the quality of her movement and the rhythm she keeps.
+// ════════════════════════════════════════════════════════════════════════
+
+// ── POLYFILL ─────────────────────────────────────────────────────────
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+    r = Math.min(r,w/2,h/2);
+    this.beginPath();
+    this.moveTo(x+r,y); this.lineTo(x+w-r,y); this.arcTo(x+w,y,x+w,y+r,r);
+    this.lineTo(x+w,y+h-r); this.arcTo(x+w,y+h,x+w-r,y+h,r);
+    this.lineTo(x+r,y+h); this.arcTo(x,y+h,x,y+h-r,r);
+    this.lineTo(x,y+r); this.arcTo(x,y,x+r,y,r);
+    this.closePath(); return this;
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  TUNABLE CONFIG — all game-feel values live here
+// ════════════════════════════════════════════════════════════════════════
+const CFG = {
+  // World
+  WORLD_HEIGHT:     6000,   // Total mountain height (px)
+  SUMMIT_Y:         80,     // World Y of the summit
+  SEGMENT_HEIGHT:   140,    // Height of each lane segment
+
+  // Movement
+  BASE_ASCENT:      0.55,   // Auto-climb px/frame (meditative pace)
+  MOMENTUM_BONUS:   0.45,   // Extra px/frame at 100 momentum
+  SURGE_BOOST:      18,     // Instant momentum gain on surge
+  SURGE_DURATION:   50,     // Frames of accelerated climbing
+  SURGE_SPEED_MULT: 2.2,   // Speed multiplier during surge
+  REFLECT_DURATION: 40,     // Frames of decelerated climbing
+  REFLECT_SPEED_MULT: 0.3,  // Speed multiplier during reflect
+  ACTION_COOLDOWN:  30,     // Frames between surge/reflect actions
+
+  // Composure (Mindful Rhythm)
+  COMPOSURE_REGEN:  0.035,  // Per-frame natural recovery
+  CADENCE_THRESHOLD: 80,    // Composure level for cadence bonus
+  CADENCE_TIME:     180,    // Frames above threshold to enter cadence
+  CADENCE_MOMENTUM: 0.025,  // Momentum gain per frame in cadence
+
+  // Segment effects (per frame)
+  STABLE_TENSION_RELIEF: 0.025,
+  STABLE_FAITH_GAIN:     0.008,
+
+  SWIFT_MOMENTUM_GAIN:   0.04,
+  SWIFT_COMPOSURE_COST:  0.05,
+  SWIFT_TENSION_GAIN:    0.035,
+
+  SHELTER_COMPOSURE_GAIN: 0.10,
+  SHELTER_TENSION_RELIEF: 0.07,
+  SHELTER_MOMENTUM_LOSS:  0.025,
+
+  VOID_TENSION_GAIN:     0.07,
+  VOID_COMPOSURE_COST:   0.04,
+
+  // Surge/Reflect instant effects
+  SURGE_COMPOSURE_COST:  6,    // Base cost (scaled by tension/100)
+  REFLECT_COMPOSURE_GAIN: 14,
+  REFLECT_MOMENTUM_COST:  10,
+  REFLECT_TENSION_RELIEF: 12,
+
+  // Faith
+  FAITH_START:       30,
+  FAITH_LEAP_BASE:   40,    // Base threshold for faith leap
+  FAITH_LEAP_SCALE:  45,    // Additional threshold at summit altitude
+  FAITH_GRACE:       0.15,  // Probability of grace on failed leap
+
+  // Dissolution
+  MAX_DISSOLUTIONS:  3,
+
+  // Layout
+  LANE_SPACING:      62,    // Px between lane centers
+  LANE_WIDTH:        42,    // Visual width of each lane path
+  PLAYER_SCREEN_Y:   0.62,  // Elara's vertical screen position (from top)
+
+  // Environment
+  WIND_ZONE_START:   0.35,  // Altitude where wind begins
+  MIST_ZONE_START:   0.55,  // Altitude where mist thickens
+};
+
+// ════════════════════════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ════════════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+let W = 430, H = 800;
+
+function resize() {
+  W = canvas.offsetWidth  || canvas.parentElement.offsetWidth  || window.innerWidth;
+  H = canvas.offsetHeight || canvas.parentElement.offsetHeight || window.innerHeight;
+  canvas.width = W; canvas.height = H;
+}
+window.addEventListener('load', resize);
+window.addEventListener('resize', resize);
+
+// ════════════════════════════════════════════════════════════════════════
+//  SEEDED RNG
+// ════════════════════════════════════════════════════════════════════════
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => { s ^= s<<13; s ^= s>>17; s ^= s<<5; return (s>>>0)/0xffffffff; };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  GAME STATE
+// ════════════════════════════════════════════════════════════════════════
+const S = {
+  phase: 'start',  // start | play | gate | dissolve | end
+  frame: 0,
+  worldY: 0,       // Elara's world Y (decreases as she ascends)
+  col: 1,          // Current lane (0=left, 1=center, 2=right)
+  colVisualX: 0,   // Interpolated screen X
+
+  // Internal state (0–100)
+  momentum:   50,
+  composure:  70,
+  tension:    10,
+  faith:      30,
+
+  // Action state
+  surging:    false,
+  reflecting: false,
+  actionTimer: 0,
+  cooldown:   0,
+
+  // Cadence (Mindful Rhythm)
+  cadenceTimer: 0,
+  inCadence: false,
+
+  // Dissolution
+  dissolutions: 0,
+  dissolveTimer: 0,
+  lastGateY: 0,    // World Y of last passed gate (respawn point)
+
+  // Camera
+  cameraY: 0,
+
+  // Environment
+  stars: [],
+  particles: [],
+  ghosts: [],
+  mist: [],
+
+  // Tracking
+  ghostSpawnTimer: 0,
+};
+
+// Choices tracking — determines ending
+const CH = {
+  aestheticTime: 0,
+  ethicalTime: 0,
+  faithLeaps: 0,
+  reflections: 0,
+  surges: 0,
+  shelteredTime: 0,
+  voidTime: 0,
+};
+
+// ════════════════════════════════════════════════════════════════════════
+//  MOUNTAIN GENERATION — Lane segments
+// ════════════════════════════════════════════════════════════════════════
+let segments = [[], [], []]; // One array per column
+
+function generateMountain() {
+  segments = [[], [], []];
+  const rng = seeded(0xE1ACA);
+
+  for (let col = 0; col < 3; col++) {
+    let y = CFG.WORLD_HEIGHT;
+    while (y > 0) {
+      const alt = 1 - y / CFG.WORLD_HEIGHT;
+      const type = chooseSegType(col, alt, rng);
+      const h = CFG.SEGMENT_HEIGHT + (rng() - 0.5) * 30;
+      segments[col].push({ yBot: y, yTop: y - h, type });
+      y -= h + 8; // small visual gap
+    }
+  }
+}
+
+function chooseSegType(col, alt, rng) {
+  const r = rng();
+
+  // Zone 1: The Base (0–0.18) — tutorial, all stable
+  if (alt < 0.18) {
+    if (col === 0 && alt > 0.12 && r < 0.25) return 'swift';
+    return 'stable';
+  }
+  // Zone 2: The Lower Pass (0.18–0.38) — learning choices
+  if (alt < 0.38) {
+    if (col === 0) return r < 0.40 ? 'swift' : 'stable';
+    if (col === 1) return r < 0.12 ? 'shelter' : 'stable';
+    return r < 0.25 ? 'swift' : (r < 0.35 ? 'shelter' : 'stable');
+  }
+  // Zone 3: The Exposed Ridge (0.38–0.58) — tension rises
+  if (alt < 0.58) {
+    if (col === 0) return r < 0.55 ? 'swift' : (r < 0.70 ? 'void' : 'stable');
+    if (col === 1) return r < 0.20 ? 'void' : (r < 0.40 ? 'swift' : 'stable');
+    return r < 0.20 ? 'shelter' : (r < 0.35 ? 'void' : 'stable');
+  }
+  // Zone 4: The Narrow Way (0.58–0.78) — discipline required
+  if (alt < 0.78) {
+    if (col === 0) return r < 0.35 ? 'swift' : (r < 0.60 ? 'void' : 'stable');
+    if (col === 1) return r < 0.30 ? 'void' : (r < 0.45 ? 'shelter' : 'stable');
+    return r < 0.25 ? 'shelter' : (r < 0.45 ? 'void' : 'stable');
+  }
+  // Zone 5: The Summit Approach (0.78–1.0) — all tested
+  if (col === 0) return r < 0.30 ? 'swift' : (r < 0.55 ? 'void' : 'stable');
+  if (col === 1) return r < 0.35 ? 'void' : (r < 0.50 ? 'shelter' : 'stable');
+  return r < 0.30 ? 'void' : (r < 0.40 ? 'swift' : 'stable');
+}
+
+function getSegmentAt(col, wy) {
+  for (const seg of segments[col]) {
+    if (wy <= seg.yBot && wy >= seg.yTop) return seg;
+  }
+  return null;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  GATES — Philosophical thresholds
+// ════════════════════════════════════════════════════════════════════════
+const GATES = [
+  {
+    alt: 0.20, passed: false,
+    type: 'open',
+    title: 'The First Threshold',
+    text: 'The mountain observes before it tests.',
+    passText: 'You are seen. The ascent has begun.',
+  },
+  {
+    alt: 0.40, passed: false,
+    type: 'composure', threshold: 35,
+    title: 'The Exposed Ridge',
+    text: 'The ridge narrows where certainty ends.',
+    passText: 'Steady form carries you through.',
+    failText: 'Your rhythm fractures on the exposed stone.',
+  },
+  {
+    alt: 0.60, passed: false,
+    type: 'composure', threshold: 50,
+    title: 'The Narrow Way',
+    text: 'Discipline carries what desire cannot.',
+    passText: 'The passage recognizes your composure.',
+    failText: 'The narrow way does not admit the uncommitted.',
+  },
+  {
+    alt: 0.80, passed: false,
+    type: 'faith',
+    title: 'The Void Between',
+    text: 'A leap is not knowledge.',
+    passText: 'You trusted what you could not see.',
+    failText: 'The void mirrors doubt.',
+  },
+];
+
+// ════════════════════════════════════════════════════════════════════════
+//  TEXT FRAGMENTS — Triggered by altitude or events
+// ════════════════════════════════════════════════════════════════════════
+const TEXT_TRIGGERS = [
+  { alt: 0.08, text: "The mountain does not hurry.", fired: false },
+  { alt: 0.15, text: "Each step is a question.", fired: false },
+  { alt: 0.25, text: null, fired: false, dynamic: true }, // depends on choices
+  { alt: 0.33, text: "The wind resists the divided self.", fired: false },
+  { alt: 0.45, text: "Exposure tests what shelter cannot.", fired: false },
+  { alt: 0.52, text: null, fired: false, dynamic: true },
+  { alt: 0.65, text: "Higher, the air thins. So does pretense.", fired: false },
+  { alt: 0.72, text: null, fired: false, dynamic: true },
+  { alt: 0.85, text: "Altitude reveals the rhythm you kept.", fired: false },
+  { alt: 0.92, text: "Almost. But almost is not yet.", fired: false },
+];
+
+function getDynamicText(alt) {
+  const aRatio = CH.aestheticTime / (CH.aestheticTime + CH.ethicalTime + 1);
+  if (alt < 0.3) {
+    if (aRatio > 0.6) return "You chose speed over form.";
+    if (aRatio < 0.3) return "Your discipline is noted.";
+    return "The path divides what the self must hold together.";
+  }
+  if (alt < 0.6) {
+    if (S.tension > 60) return "Anxiety is the dizziness of freedom.";
+    if (S.composure > 70) return "Composure is not the absence of fear.";
+    return "Between impulse and duty, the self emerges.";
+  }
+  if (CH.faithLeaps > 0) return "Faith is not certainty arrived at, but certainty leapt toward.";
+  if (S.tension > 50) return "The summit does not care how you trembled.";
+  return "What you carried here is what you became.";
+}
+
+let textFragTimer = 0;
+function showTextFragment(text) {
+  const el = document.getElementById('text-frag');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(textFragTimer);
+  textFragTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  ENDINGS — Determined by accumulated choices
+// ════════════════════════════════════════════════════════════════════════
+const ENDINGS = {
+  aesthetic: {
+    title: 'The Burning Arrival',
+    subtitle: 'Aesthetic Ascent',
+    poem: "You arrived like lightning —\nbright, immediate, unformed.\nThe mountain saw your speed.\nIt did not see your face.",
+    orbClass: '',
+  },
+  ethical: {
+    title: 'The Composed Arrival',
+    subtitle: 'Ethical Ascent',
+    poem: "Step by step, the mountain yielded.\nNot to force, but to form.\nYou carried yourself\nthe only way that lasts.",
+    orbClass: '',
+  },
+  faith: {
+    title: 'The Leap That Landed',
+    subtitle: 'Faith Ascent',
+    poem: "You trusted the void.\nThe void trusted you.\nWhat cannot be known\nwas never the obstacle.",
+    orbClass: 'gold',
+  },
+  fragmented: {
+    title: 'The Scattered Arrival',
+    subtitle: 'Fragmented Ascent',
+    poem: "You reached the summit,\nbut not whole.\nThe wind carries what you left behind.\nAscend again.",
+    orbClass: 'dim',
+  },
+  integrated: {
+    title: 'The Whole Ascent',
+    subtitle: 'Integrated Ascent',
+    poem: "Speed and stillness.\nDiscipline and surrender.\nThe mountain did not defeat you.\nIt clarified you.",
+    orbClass: 'gold',
+  },
+  balanced: {
+    title: 'The Quiet Arrival',
+    subtitle: 'Balanced Ascent',
+    poem: "Neither fire nor stone.\nYou climbed as the wind climbs —\nwithout insistence,\nwithout retreat.",
+    orbClass: '',
+  },
+  dissolved: {
+    title: 'The Mountain Endures',
+    subtitle: 'The ascent continues',
+    poem: "The pass did not yield.\nNot from cruelty —\nfrom clarity.\nReturn when you are ready\nto become.",
+    orbClass: 'dim',
+  },
+};
+
+function determineEnding() {
+  if (S.dissolutions >= CFG.MAX_DISSOLUTIONS) return 'dissolved';
+
+  const total = CH.aestheticTime + CH.ethicalTime + 1;
+  const aRatio = CH.aestheticTime / total;
+  const eRatio = CH.ethicalTime / total;
+  const balanced = Math.abs(aRatio - eRatio) < 0.18;
+
+  // Integrated: balanced + faith + reflections
+  if (balanced && CH.faithLeaps >= 2 && CH.reflections >= 3) return 'integrated';
+
+  // Faith-defined
+  if (CH.faithLeaps >= 3) return 'faith';
+
+  // Fragmented: high tension or many dissolutions
+  if (S.tension > 65 || S.dissolutions >= 2) return 'fragmented';
+
+  // Aesthetic-heavy
+  if (aRatio > 0.55) return 'aesthetic';
+
+  // Ethical-heavy
+  if (eRatio > 0.55) return 'ethical';
+
+  return 'balanced';
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  ENVIRONMENT
+// ════════════════════════════════════════════════════════════════════════
+function initStars() {
+  S.stars = Array.from({length: 60}, () => ({
+    x: Math.random() * W,
+    y: Math.random() * H * 0.4,
+    r: Math.random() * 1.2 + 0.3,
+    a: Math.random() * 0.4 + 0.1,
+    tw: Math.random() * Math.PI * 2,
+  }));
+}
+
+function initMist() {
+  S.mist = Array.from({length: 8}, (_, i) => ({
+    worldY: 1000 + i * 700 + Math.random() * 300,
+    width: W * (0.6 + Math.random() * 0.4),
+    x: (Math.random() - 0.5) * W * 0.3,
+    height: 20 + Math.random() * 30,
+    alpha: 0.04 + Math.random() * 0.06,
+    speed: 0.1 + Math.random() * 0.15,
+  }));
+}
+
+function spawnParticle(type, wx, wy) {
+  const p = { wx, wy, life: 1, type };
+  switch (type) {
+    case 'surge':
+      p.vx = (Math.random() - 0.5) * 1.5;
+      p.vy = 1.5 + Math.random() * 2;
+      p.r = 1.5 + Math.random() * 2;
+      p.decay = 0.02 + Math.random() * 0.01;
+      p.col = '#a8d4ff';
+      break;
+    case 'reflect':
+      p.vx = (Math.random() - 0.5) * 0.8;
+      p.vy = -0.3 + Math.random() * 0.6;
+      p.r = 1 + Math.random() * 2;
+      p.decay = 0.015;
+      p.col = '#d4af37';
+      break;
+    case 'faith':
+      p.vx = (Math.random() - 0.5) * 3;
+      p.vy = (Math.random() - 0.5) * 3;
+      p.r = 2 + Math.random() * 3;
+      p.decay = 0.012;
+      p.col = '#ffe8a0';
+      break;
+    case 'dissolve':
+      p.vx = (Math.random() - 0.5) * 2;
+      p.vy = (Math.random() - 0.5) * 2;
+      p.r = 1 + Math.random() * 3;
+      p.decay = 0.008;
+      p.col = 'rgba(180,180,220,0.6)';
+      break;
+    case 'wind':
+      p.vx = 2 + Math.random() * 3;
+      p.vy = (Math.random() - 0.5) * 0.3;
+      p.r = 0.8 + Math.random() * 1;
+      p.decay = 0.015;
+      p.col = 'rgba(180,200,230,0.4)';
+      break;
+    case 'cadence':
+      p.vx = (Math.random() - 0.5) * 0.6;
+      p.vy = -0.5 - Math.random() * 0.5;
+      p.r = 1.5 + Math.random() * 1.5;
+      p.decay = 0.012;
+      p.col = '#d4af37';
+      break;
+  }
+  S.particles.push(p);
+}
+
+function updateParticles() {
+  for (let i = S.particles.length - 1; i >= 0; i--) {
+    const p = S.particles[i];
+    p.wx += p.vx;
+    p.wy += p.vy;
+    p.life -= p.decay;
+    if (p.life <= 0) S.particles.splice(i, 1);
+  }
+}
+
+function spawnGhost() {
+  if (S.ghosts.length >= 3) return;
+  const col = Math.floor(Math.random() * 3);
+  if (col === S.col) return; // not on player's lane
+  S.ghosts.push({
+    col,
+    worldY: S.worldY + H * 0.3 + Math.random() * H * 0.2,
+    speed: 0.2 + Math.random() * 0.15,
+    alpha: 0.08 + Math.random() * 0.07,
+    life: 400 + Math.random() * 300,
+  });
+}
+
+function updateGhosts() {
+  for (let i = S.ghosts.length - 1; i >= 0; i--) {
+    const g = S.ghosts[i];
+    g.worldY -= g.speed;
+    g.life--;
+    if (g.life <= 0 || g.worldY < S.worldY - H) S.ghosts.splice(i, 1);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  INPUT
+// ════════════════════════════════════════════════════════════════════════
+const K = { left: false, right: false, up: false, down: false };
+let pendingAction = null; // 'left' | 'right' | 'up' | 'down'
+
+document.addEventListener('keydown', e => {
+  if (S.phase === 'gate') {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') {
+      e.preventDefault();
+      handleGateInput('up');
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleGateInput('confirm');
+    }
+    return;
+  }
+  if (S.phase !== 'play') return;
+  const prevent = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '];
+  if (prevent.includes(e.key)) e.preventDefault();
+  if (e.key === 'ArrowLeft'  || e.key === 'a') { K.left  = true; handleAction('left'); }
+  if (e.key === 'ArrowRight' || e.key === 'd') { K.right = true; handleAction('right'); }
+  if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === ' ') { K.up = true; handleAction('up'); }
+  if (e.key === 'ArrowDown'  || e.key === 's') { K.down = true; handleAction('down'); }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft'  || e.key === 'a') K.left  = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') K.right = false;
+  if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === ' ') K.up = false;
+  if (e.key === 'ArrowDown'  || e.key === 's') K.down = false;
+});
+
+// Swipe detection
+const wrap = document.getElementById('wrap');
+let tSX = 0, tSY = 0, tTime = 0, tHandled = false;
+const SWIPE_THRESH = 30;
+const SWIPE_MAX_T  = 500;
+
+wrap.addEventListener('touchstart', e => {
+  if (S.phase === 'start' || S.phase === 'end') return;
+  e.preventDefault();
+  const t = e.touches[0];
+  tSX = t.clientX; tSY = t.clientY;
+  tTime = Date.now(); tHandled = false;
+}, { passive: false });
+
+wrap.addEventListener('touchmove', e => {
+  if (S.phase !== 'play' && S.phase !== 'gate') return;
+  e.preventDefault();
+}, { passive: false });
+
+wrap.addEventListener('touchend', e => {
+  if (S.phase === 'start' || S.phase === 'end') return;
+  e.preventDefault();
+  if (tHandled) return;
+  tHandled = true;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - tSX;
+  const dy = t.clientY - tSY;
+  const dt = Date.now() - tTime;
+  if (dt > SWIPE_MAX_T) return;
+
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ax < SWIPE_THRESH && ay < SWIPE_THRESH) {
+    // Tap
+    if (S.phase === 'gate') handleGateInput('confirm');
+    return;
+  }
+
+  if (S.phase === 'gate') {
+    if (ay > ax && dy < -SWIPE_THRESH) handleGateInput('up');
+    return;
+  }
+
+  if (S.phase !== 'play') return;
+  if (ay > ax) {
+    handleAction(dy < 0 ? 'up' : 'down');
+  } else {
+    handleAction(dx < 0 ? 'left' : 'right');
+  }
+}, { passive: false });
+
+function handleAction(dir) {
+  if (S.phase !== 'play') return;
+  switch (dir) {
+    case 'left':
+      if (S.col > 0) { S.col--; }
+      break;
+    case 'right':
+      if (S.col < 2) { S.col++; }
+      break;
+    case 'up':
+      surge();
+      break;
+    case 'down':
+      reflect();
+      break;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  GAME LOGIC
+// ════════════════════════════════════════════════════════════════════════
+function surge() {
+  if (S.cooldown > 0 || S.surging || S.reflecting) return;
+  S.surging = true;
+  S.actionTimer = CFG.SURGE_DURATION;
+  S.cooldown = CFG.ACTION_COOLDOWN;
+
+  // State effects
+  S.momentum = Math.min(100, S.momentum + CFG.SURGE_BOOST);
+  const composureCost = CFG.SURGE_COMPOSURE_COST * (0.5 + S.tension / 200);
+  S.composure = Math.max(0, S.composure - composureCost);
+  CH.surges++;
+
+  // Check if surging through void = faith leap
+  const seg = getSegmentAt(S.col, S.worldY);
+  if (!seg || seg.type === 'void') {
+    attemptFaithLeap();
+  }
+
+  // Particles
+  const px = colX(S.col);
+  for (let i = 0; i < 8; i++) spawnParticle('surge', px, S.worldY);
+}
+
+function reflect() {
+  if (S.cooldown > 0 || S.surging || S.reflecting) return;
+  S.reflecting = true;
+  S.actionTimer = CFG.REFLECT_DURATION;
+  S.cooldown = CFG.ACTION_COOLDOWN;
+
+  // State effects
+  S.composure = Math.min(100, S.composure + CFG.REFLECT_COMPOSURE_GAIN);
+  S.momentum  = Math.max(10, S.momentum - CFG.REFLECT_MOMENTUM_COST);
+  S.tension   = Math.max(0, S.tension - CFG.REFLECT_TENSION_RELIEF);
+  CH.reflections++;
+
+  // Particles
+  const px = colX(S.col);
+  for (let i = 0; i < 6; i++) spawnParticle('reflect', px, S.worldY);
+}
+
+function attemptFaithLeap() {
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  const threshold = CFG.FAITH_LEAP_BASE + alt * CFG.FAITH_LEAP_SCALE;
+  const score = S.faith * 0.6 + S.composure * 0.4;
+
+  if (score >= threshold) {
+    // Success
+    S.faith = Math.min(100, S.faith + 15);
+    CH.faithLeaps++;
+    showTextFragment("You leapt. The void held you.");
+    const px = colX(S.col);
+    for (let i = 0; i < 12; i++) spawnParticle('faith', px, S.worldY);
+  } else if (Math.random() < CFG.FAITH_GRACE) {
+    // Grace
+    S.faith = Math.min(100, S.faith + 25);
+    CH.faithLeaps++;
+    showTextFragment("Grace. Not earned, but given.");
+    const px = colX(S.col);
+    for (let i = 0; i < 15; i++) spawnParticle('faith', px, S.worldY);
+  } else {
+    // Failure
+    S.faith = Math.max(0, S.faith - 10);
+    showTextFragment("A leap without foundation.");
+    dissolve();
+  }
+}
+
+function dissolve() {
+  if (S.phase !== 'play') return;
+  S.phase = 'dissolve';
+  S.dissolveTimer = 180; // 3 seconds
+  S.dissolutions++;
+
+  // Particles
+  const px = colX(S.col);
+  for (let i = 0; i < 20; i++) spawnParticle('dissolve', px, S.worldY);
+
+  if (S.dissolutions >= CFG.MAX_DISSOLUTIONS) {
+    // Game over — fragmented ending
+    setTimeout(() => showEnding(), 2500);
+  }
+}
+
+function respawnAfterDissolve() {
+  S.phase = 'play';
+  S.worldY = S.lastGateY > 0 ? S.lastGateY + 100 : S.worldY + 400;
+  S.col = 1;
+  S.tension = Math.max(0, S.tension * 0.5);
+  S.composure = Math.max(30, S.composure);
+  S.momentum = 40;
+  S.surging = false;
+  S.reflecting = false;
+  S.actionTimer = 0;
+  S.cooldown = 0;
+  showTextFragment("You withdrew, but did not fail.");
+}
+
+function colX(col) {
+  return W / 2 + (col - 1) * CFG.LANE_SPACING;
+}
+
+function worldToScreenY(wy) {
+  return wy - S.cameraY;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  UPDATE
+// ════════════════════════════════════════════════════════════════════════
+function update() {
+  S.frame++;
+  if (S.cooldown > 0) S.cooldown--;
+
+  // ── Dissolve phase ──
+  if (S.phase === 'dissolve') {
+    S.dissolveTimer--;
+    updateParticles();
+    if (S.dissolveTimer <= 0 && S.dissolutions < CFG.MAX_DISSOLUTIONS) {
+      respawnAfterDissolve();
+    }
+    return;
+  }
+
+  if (S.phase !== 'play') return;
+
+  // ── Ascent speed ──
+  let speed = CFG.BASE_ASCENT + (S.momentum / 100) * CFG.MOMENTUM_BONUS;
+  if (S.surging) speed *= CFG.SURGE_SPEED_MULT;
+  if (S.reflecting) speed *= CFG.REFLECT_SPEED_MULT;
+
+  S.worldY -= speed;
+
+  // Action timer
+  if (S.actionTimer > 0) {
+    S.actionTimer--;
+    if (S.actionTimer <= 0) {
+      S.surging = false;
+      S.reflecting = false;
+    }
+  }
+
+  // ── Segment effects ──
+  const seg = getSegmentAt(S.col, S.worldY);
+  if (seg) {
+    switch (seg.type) {
+      case 'stable':
+        S.tension = Math.max(0, S.tension - CFG.STABLE_TENSION_RELIEF);
+        S.faith = Math.min(100, S.faith + CFG.STABLE_FAITH_GAIN);
+        CH.ethicalTime++;
+        break;
+      case 'swift':
+        S.momentum = Math.min(100, S.momentum + CFG.SWIFT_MOMENTUM_GAIN);
+        S.composure = Math.max(0, S.composure - CFG.SWIFT_COMPOSURE_COST);
+        S.tension = Math.min(100, S.tension + CFG.SWIFT_TENSION_GAIN);
+        CH.aestheticTime++;
+        break;
+      case 'shelter':
+        S.composure = Math.min(100, S.composure + CFG.SHELTER_COMPOSURE_GAIN);
+        S.tension = Math.max(0, S.tension - CFG.SHELTER_TENSION_RELIEF);
+        S.momentum = Math.max(15, S.momentum - CFG.SHELTER_MOMENTUM_LOSS);
+        CH.shelteredTime++;
+        break;
+      case 'void':
+        S.tension = Math.min(100, S.tension + CFG.VOID_TENSION_GAIN);
+        S.composure = Math.max(0, S.composure - CFG.VOID_COMPOSURE_COST);
+        CH.voidTime++;
+        break;
+    }
+  } else {
+    // In a gap between segments — minor tension
+    S.tension = Math.min(100, S.tension + 0.02);
+  }
+
+  // ── Mindful Rhythm: natural composure regen ──
+  S.composure = Math.min(100, S.composure + CFG.COMPOSURE_REGEN);
+
+  // ── Momentum natural decay (entropy) ──
+  S.momentum = Math.max(20, S.momentum - 0.012);
+
+  // ── Cadence check ──
+  if (S.composure >= CFG.CADENCE_THRESHOLD) {
+    S.cadenceTimer++;
+    if (S.cadenceTimer >= CFG.CADENCE_TIME) {
+      if (!S.inCadence) showTextFragment("Mindful cadence. The wind aligns.");
+      S.inCadence = true;
+      S.momentum = Math.min(100, S.momentum + CFG.CADENCE_MOMENTUM);
+      // Cadence particles
+      if (S.frame % 12 === 0) {
+        spawnParticle('cadence', colX(S.col), S.worldY);
+      }
+    }
+  } else {
+    S.cadenceTimer = 0;
+    S.inCadence = false;
+  }
+
+  // ── Dissolution check ──
+  if (S.tension >= 100 && S.composure <= 5) {
+    showTextFragment("The form dissolved. The mountain remains.");
+    dissolve();
+    return;
+  }
+
+  // ── Gate check ──
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  for (const gate of GATES) {
+    if (!gate.passed && alt >= gate.alt) {
+      enterGate(gate);
+      return;
+    }
+  }
+
+  // ── Summit check ──
+  if (S.worldY <= CFG.SUMMIT_Y) {
+    showEnding();
+    return;
+  }
+
+  // ── Text triggers ──
+  for (const tt of TEXT_TRIGGERS) {
+    if (!tt.fired && alt >= tt.alt) {
+      tt.fired = true;
+      const text = tt.dynamic ? getDynamicText(tt.alt) : tt.text;
+      if (text) showTextFragment(text);
+    }
+  }
+
+  // ── Camera ──
+  S.cameraY = S.worldY - H * CFG.PLAYER_SCREEN_Y;
+
+  // ── Visual X interpolation ──
+  const targetX = colX(S.col);
+  S.colVisualX += (targetX - S.colVisualX) * 0.18;
+
+  // ── Particles ──
+  updateParticles();
+  updateGhosts();
+
+  // Wind particles at high altitude
+  if (alt > CFG.WIND_ZONE_START && S.frame % 8 === 0) {
+    const wy = S.worldY + (Math.random() - 0.5) * H;
+    spawnParticle('wind', -20, wy);
+  }
+
+  // Ghost riders
+  S.ghostSpawnTimer++;
+  if (S.ghostSpawnTimer > 600 + Math.random() * 400) {
+    spawnGhost();
+    S.ghostSpawnTimer = 0;
+  }
+
+  // ── Mist drift ──
+  S.mist.forEach(m => { m.x += m.speed; if (m.x > W * 0.5) m.x = -W * 0.5; });
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  GATE LOGIC
+// ════════════════════════════════════════════════════════════════════════
+let currentGate = null;
+let gateResolved = false;
+let gateAutoClose = 0;
+
+function enterGate(gate) {
+  S.phase = 'gate';
+  currentGate = gate;
+  gateResolved = false;
+  gateAutoClose = 0;
+
+  document.getElementById('gate-title').textContent = gate.title;
+  document.getElementById('gate-text').textContent = gate.text;
+  document.getElementById('gate-result').textContent = '';
+
+  if (gate.type === 'open') {
+    document.getElementById('gate-prompt').textContent = 'Tap or press Enter to continue';
+    gateResolved = true;
+    gate.passed = true;
+    S.lastGateY = S.worldY;
+    document.getElementById('gate-result').textContent = gate.passText;
+  } else if (gate.type === 'composure') {
+    if (S.composure >= gate.threshold) {
+      gate.passed = true;
+      S.lastGateY = S.worldY;
+      document.getElementById('gate-result').textContent = gate.passText;
+      document.getElementById('gate-prompt').textContent = 'Tap to continue';
+      gateResolved = true;
+    } else {
+      document.getElementById('gate-result').textContent = gate.failText;
+      document.getElementById('gate-prompt').textContent = 'Swipe ↑ to leap in faith · Tap to withdraw';
+      gateResolved = false;
+    }
+  } else if (gate.type === 'faith') {
+    document.getElementById('gate-prompt').textContent = 'Swipe ↑ to leap';
+    gateResolved = false;
+  }
+
+  document.getElementById('gate-overlay').classList.add('show');
+}
+
+function handleGateInput(action) {
+  if (!currentGate) return;
+
+  if (gateResolved && (action === 'confirm' || action === 'up')) {
+    closeGate();
+    return;
+  }
+
+  if (action === 'up') {
+    // Attempt faith leap at gate
+    const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+    const threshold = CFG.FAITH_LEAP_BASE + alt * CFG.FAITH_LEAP_SCALE;
+    const score = S.faith * 0.6 + S.composure * 0.4;
+    const success = score >= threshold || Math.random() < CFG.FAITH_GRACE;
+
+    if (success) {
+      currentGate.passed = true;
+      S.lastGateY = S.worldY;
+      S.faith = Math.min(100, S.faith + 20);
+      CH.faithLeaps++;
+      document.getElementById('gate-result').textContent = currentGate.passText || 'The void held you.';
+      document.getElementById('gate-prompt').textContent = 'Tap to continue';
+      gateResolved = true;
+      const px = colX(S.col);
+      for (let i = 0; i < 12; i++) spawnParticle('faith', px, S.worldY);
+    } else {
+      document.getElementById('gate-result').textContent = currentGate.failText || 'The void mirrors doubt.';
+      document.getElementById('gate-prompt').textContent = '';
+      gateResolved = true;
+      gateAutoClose = 120;
+      S.faith = Math.max(0, S.faith - 10);
+      // Will dissolve after gate closes
+    }
+  } else if (action === 'confirm') {
+    if (!gateResolved && currentGate.type === 'composure') {
+      // Withdraw from failed composure gate
+      currentGate.passed = true; // Allow passage but with penalty
+      S.lastGateY = S.worldY;
+      S.tension = Math.min(100, S.tension + 15);
+      document.getElementById('gate-result').textContent = 'You passed through doubt.';
+      document.getElementById('gate-prompt').textContent = 'Tap to continue';
+      gateResolved = true;
+    }
+  }
+}
+
+function closeGate() {
+  document.getElementById('gate-overlay').classList.remove('show');
+  const failed = currentGate && !currentGate.passed;
+  currentGate = null;
+
+  if (failed) {
+    S.phase = 'play'; // Must be play before dissolve() checks it
+    dissolve();
+  } else {
+    S.phase = 'play';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  RENDERING
+// ════════════════════════════════════════════════════════════════════════
+
+// ── 1. SKY ────────────────────────────────────────────────────────────
+function drawSky() {
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  const g = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+
+  if (alt > 0.85) {
+    // Near summit: hint of dawn
+    g.addColorStop(0, '#060810');
+    g.addColorStop(0.4, '#0c1228');
+    g.addColorStop(0.8, '#1a1540');
+    g.addColorStop(1, '#2a1a3a');
+  } else if (alt > 0.5) {
+    // High altitude: cold, clear
+    g.addColorStop(0, '#030610');
+    g.addColorStop(0.5, '#0a1535');
+    g.addColorStop(1, '#12203a');
+  } else {
+    // Lower: standard deep navy
+    g.addColorStop(0, '#060b18');
+    g.addColorStop(0.5, '#0d1a3a');
+    g.addColorStop(1, '#152848');
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H * 0.5);
+
+  // Fill lower half with a dark gradient
+  const g2 = ctx.createLinearGradient(0, H * 0.5, 0, H);
+  const baseCol = alt > 0.7 ? '#0a0e1a' : '#080c16';
+  g2.addColorStop(0, alt > 0.5 ? '#12203a' : '#152848');
+  g2.addColorStop(1, baseCol);
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, H * 0.5, W, H * 0.5);
+}
+
+// ── 2. STARS ──────────────────────────────────────────────────────────
+function drawStars() {
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  if (alt < 0.3) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, (alt - 0.3) * 2);
+  S.stars.forEach(s => {
+    s.tw += 0.012;
+    ctx.fillStyle = `rgba(200,220,255,${s.a * (0.6 + 0.4 * Math.sin(s.tw))})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.restore();
+}
+
+// ── 3. MOUNTAIN SILHOUETTES ───────────────────────────────────────────
+function drawMountainEdges() {
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  // Mountain edges narrow with altitude
+  const edgeW = W * (0.22 - alt * 0.08);
+
+  // Left edge
+  ctx.save();
+  const gl = ctx.createLinearGradient(0, 0, edgeW + 20, 0);
+  gl.addColorStop(0, '#050810');
+  gl.addColorStop(0.6, 'rgba(5,8,16,0.5)');
+  gl.addColorStop(1, 'rgba(5,8,16,0)');
+  ctx.fillStyle = gl;
+  ctx.fillRect(0, 0, edgeW + 20, H);
+
+  // Jagged edge detail
+  ctx.fillStyle = '#070a14';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  const scrollOff = S.cameraY * 0.3;
+  for (let y = 0; y <= H; y += 15) {
+    const x = edgeW + Math.sin((y + scrollOff) * 0.025) * 8
+            + Math.sin((y + scrollOff) * 0.011) * 12;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(0, H);
+  ctx.closePath(); ctx.fill();
+
+  // Right edge (mirror)
+  const gr = ctx.createLinearGradient(W, 0, W - edgeW - 20, 0);
+  gr.addColorStop(0, '#050810');
+  gr.addColorStop(0.6, 'rgba(5,8,16,0.5)');
+  gr.addColorStop(1, 'rgba(5,8,16,0)');
+  ctx.fillStyle = gr;
+  ctx.fillRect(W - edgeW - 20, 0, edgeW + 20, H);
+
+  ctx.fillStyle = '#070a14';
+  ctx.beginPath();
+  ctx.moveTo(W, 0);
+  for (let y = 0; y <= H; y += 15) {
+    const x = W - edgeW - Math.sin((y + scrollOff) * 0.021 + 2) * 8
+            - Math.sin((y + scrollOff) * 0.009 + 1) * 12;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── 4. MIST LAYERS ────────────────────────────────────────────────────
+function drawMist() {
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  if (alt < 0.2) return;
+  const mistAlpha = Math.min(0.12, (alt - 0.2) * 0.15);
+  S.mist.forEach(m => {
+    const sy = worldToScreenY(m.worldY);
+    if (sy < -50 || sy > H + 50) return;
+    ctx.save();
+    ctx.globalAlpha = m.alpha + mistAlpha;
+    const mg = ctx.createRadialGradient(
+      W / 2 + m.x, sy, 0,
+      W / 2 + m.x, sy, m.width / 2
+    );
+    mg.addColorStop(0, 'rgba(180,200,220,0.3)');
+    mg.addColorStop(0.5, 'rgba(160,180,200,0.1)');
+    mg.addColorStop(1, 'rgba(140,160,180,0)');
+    ctx.fillStyle = mg;
+    ctx.fillRect(0, sy - m.height, W, m.height * 2);
+    ctx.restore();
+  });
+}
+
+// ── 5. LANE PATHS ─────────────────────────────────────────────────────
+function drawLanes() {
+  for (let col = 0; col < 3; col++) {
+    const cx = colX(col);
+    const isActive = col === S.col;
+
+    // Thin background line
+    ctx.strokeStyle = `rgba(168,212,255,${isActive ? 0.08 : 0.03})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+
+    // Draw visible segments
+    for (const seg of segments[col]) {
+      const syBot = worldToScreenY(seg.yBot);
+      const syTop = worldToScreenY(seg.yTop);
+      if (syBot < -20 || syTop > H + 20) continue;
+      drawSegment(cx, syTop, syBot, seg.type, isActive);
+    }
+  }
+}
+
+function drawSegment(cx, syTop, syBot, type, isActive) {
+  const h = syBot - syTop;
+  if (h < 2) return;
+  let w, fillCol, glowCol, edgeCol;
+
+  switch (type) {
+    case 'stable':
+      w = CFG.LANE_WIDTH;
+      fillCol = isActive ? 'rgba(35,48,72,0.7)' : 'rgba(30,40,58,0.35)';
+      glowCol = 'rgba(168,212,255,0.08)';
+      edgeCol = 'rgba(168,212,255,0.12)';
+      break;
+    case 'swift':
+      w = CFG.LANE_WIDTH - 4;
+      fillCol = isActive ? 'rgba(60,38,90,0.75)' : 'rgba(45,30,70,0.35)';
+      glowCol = 'rgba(87,94,207,0.2)';
+      edgeCol = 'rgba(130,120,220,0.2)';
+      break;
+    case 'shelter':
+      w = CFG.LANE_WIDTH + 6;
+      fillCol = isActive ? 'rgba(55,48,30,0.7)' : 'rgba(42,38,25,0.35)';
+      glowCol = 'rgba(212,175,55,0.12)';
+      edgeCol = 'rgba(212,175,55,0.15)';
+      break;
+    case 'void':
+      w = 10;
+      fillCol = 'rgba(100,100,140,0.06)';
+      glowCol = 'rgba(100,100,140,0.02)';
+      edgeCol = 'rgba(100,100,140,0.05)';
+      break;
+  }
+
+  ctx.save();
+
+  // Glow for active segment
+  if (isActive && type !== 'void') {
+    ctx.shadowColor = glowCol;
+    ctx.shadowBlur = 12;
+  }
+
+  // Main body
+  ctx.fillStyle = fillCol;
+  ctx.beginPath();
+  ctx.roundRect(cx - w / 2, syTop, w, h, 3);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Edge highlight
+  ctx.strokeStyle = edgeCol;
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+
+  // Type-specific decorations
+  if (type === 'swift' && isActive) {
+    // Pulsing energy lines
+    const pulse = 0.5 + 0.5 * Math.sin(S.frame * 0.08);
+    ctx.strokeStyle = `rgba(130,120,220,${0.15 * pulse})`;
+    ctx.lineWidth = 1;
+    const mid = (syTop + syBot) / 2;
+    for (let i = -2; i <= 2; i++) {
+      const y = mid + i * 18;
+      if (y < syTop || y > syBot) continue;
+      ctx.beginPath();
+      ctx.moveTo(cx - w / 2 + 4, y);
+      ctx.lineTo(cx + w / 2 - 4, y);
+      ctx.stroke();
+    }
+  }
+
+  if (type === 'shelter') {
+    // Warm glow at center
+    const grd = ctx.createRadialGradient(cx, (syTop + syBot) / 2, 0, cx, (syTop + syBot) / 2, w);
+    grd.addColorStop(0, 'rgba(212,175,55,0.06)');
+    grd.addColorStop(1, 'rgba(212,175,55,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(cx - w, syTop, w * 2, h);
+  }
+
+  if (type === 'void') {
+    // Dotted path
+    ctx.setLineDash([4, 8]);
+    ctx.strokeStyle = 'rgba(140,140,180,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, syTop);
+    ctx.lineTo(cx, syBot);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+}
+
+// ── 6. SUMMIT BEACON ──────────────────────────────────────────────────
+function drawSummitBeacon() {
+  const sy = worldToScreenY(CFG.SUMMIT_Y);
+  if (sy < -80 || sy > H + 40) return;
+  const cx = W / 2;
+  const t = S.frame;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.04);
+  const r = 20 + pulse * 12;
+
+  // Outer rings
+  for (let i = 3; i >= 0; i--) {
+    ctx.beginPath(); ctx.arc(cx, sy, r + i * 12, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(212,175,55,${(0.08 - i * 0.015) * (0.7 + 0.3 * pulse)})`;
+    ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // Core glow
+  const pg = ctx.createRadialGradient(cx, sy, 0, cx, sy, r);
+  pg.addColorStop(0, `rgba(255,245,190,${0.35 + 0.15 * pulse})`);
+  pg.addColorStop(0.6, `rgba(212,175,55,${0.08 + 0.06 * pulse})`);
+  pg.addColorStop(1, 'rgba(212,175,55,0)');
+  ctx.beginPath(); ctx.arc(cx, sy, r, 0, Math.PI * 2);
+  ctx.fillStyle = pg; ctx.fill();
+
+  // Summit symbol
+  ctx.fillStyle = `rgba(255,245,200,${0.8 + 0.2 * pulse})`;
+  ctx.font = `${14 + pulse * 4}px serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('✦', cx, sy);
+}
+
+// ── 7. PRAYER FLAGS (at gate altitudes) ───────────────────────────────
+function drawPrayerFlags() {
+  const COLS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff'];
+  const t = S.frame;
+
+  GATES.forEach(gate => {
+    const gateY = CFG.WORLD_HEIGHT * (1 - gate.alt);
+    const sy = worldToScreenY(gateY);
+    if (sy < -20 || sy > H + 20) return;
+
+    const lx = W * 0.2;
+    const rx = W * 0.8;
+
+    ctx.strokeStyle = 'rgba(197,193,185,.15)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(lx, sy); ctx.lineTo(rx, sy); ctx.stroke();
+
+    for (let i = 0; i < 5; i++) {
+      const fx = lx + (rx - lx) * i / 4;
+      const fw = 8, fh = 6;
+      ctx.save(); ctx.translate(fx, sy);
+      ctx.rotate(Math.sin(t * 0.04 + i * 0.8) * 0.1);
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = COLS[i % COLS.length];
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(fw, 0); ctx.lineTo(fw * 0.5, fh); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ── 8. GHOST RIDERS ───────────────────────────────────────────────────
+function drawGhosts() {
+  S.ghosts.forEach(g => {
+    const sy = worldToScreenY(g.worldY);
+    if (sy < -30 || sy > H + 30) return;
+    const gx = colX(g.col);
+    ctx.save();
+    ctx.globalAlpha = g.alpha * (g.life < 60 ? g.life / 60 : 1);
+    ctx.translate(gx, sy);
+
+    // Simple ghost silhouette
+    ctx.fillStyle = 'rgba(160,170,200,0.5)';
+    // Head
+    ctx.beginPath(); ctx.arc(0, -14, 3, 0, Math.PI * 2); ctx.fill();
+    // Body
+    ctx.beginPath();
+    ctx.moveTo(-4, -8); ctx.lineTo(-3, 2); ctx.lineTo(3, 2); ctx.lineTo(4, -8);
+    ctx.closePath(); ctx.fill();
+    // Trail
+    ctx.strokeStyle = 'rgba(160,170,200,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(0, 12); ctx.stroke();
+
+    ctx.restore();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ── 9. ELARA ──────────────────────────────────────────────────────────
+function drawElara() {
+  const sx = S.colVisualX;
+  const sy = H * CFG.PLAYER_SCREEN_Y;
+  const t = S.frame * 0.03;
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  // ── State-dependent shake ──
+  if (S.tension > 70) {
+    const shake = (S.tension - 70) * 0.04;
+    ctx.translate(
+      (Math.random() - 0.5) * shake,
+      (Math.random() - 0.5) * shake * 0.5
+    );
+  }
+
+  // ── Aura beneath feet — golden glow ──
+  const auraSize = 18 + S.composure * 0.18;
+  const auraAlpha = 0.12 + S.composure * 0.003;
+  const ag = ctx.createRadialGradient(0, 10, 0, 0, 10, auraSize);
+  const auraHue = S.inCadence ? '212,175,55' : (S.tension > 60 ? '140,100,200' : '255,240,200');
+  ag.addColorStop(0, `rgba(${auraHue},${auraAlpha})`);
+  ag.addColorStop(0.5, `rgba(${auraHue},${auraAlpha * 0.3})`);
+  ag.addColorStop(1, `rgba(${auraHue},0)`);
+  ctx.fillStyle = ag;
+  ctx.beginPath(); ctx.arc(0, 10, auraSize, 0, Math.PI * 2); ctx.fill();
+
+  // ── Body aura ──
+  const bodyGlow = S.inCadence ? 'rgba(212,175,55,' : 'rgba(168,212,255,';
+  const bodyAlpha = 0.1 + S.composure * 0.002;
+  const ba = ctx.createRadialGradient(0, -6, 0, 0, -6, 24);
+  ba.addColorStop(0, bodyGlow + bodyAlpha + ')');
+  ba.addColorStop(1, bodyGlow + '0)');
+  ctx.fillStyle = ba;
+  ctx.beginPath(); ctx.arc(0, -6, 24, 0, Math.PI * 2); ctx.fill();
+
+  // ── Legs ──
+  ctx.strokeStyle = '#c0ccd8';
+  ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-2.5, 1); ctx.lineTo(-3.5, 13); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2.5, 1); ctx.lineTo(3.5, 13); ctx.stroke();
+
+  // ── Feet ──
+  ctx.fillStyle = '#b0b8c8';
+  ctx.beginPath(); ctx.arc(-3.5, 14, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(3.5, 14, 1.5, 0, Math.PI * 2); ctx.fill();
+
+  // ── Body / torso ──
+  ctx.fillStyle = '#e0e8f2';
+  ctx.beginPath();
+  ctx.moveTo(-5.5, 1);
+  ctx.lineTo(-3.5, -12);
+  ctx.lineTo(3.5, -12);
+  ctx.lineTo(5.5, 1);
+  ctx.closePath(); ctx.fill();
+
+  // ── Gold armband ──
+  ctx.fillStyle = '#d4af37';
+  ctx.beginPath(); ctx.ellipse(5, -6, 2, 1.5, 0.2, 0, Math.PI * 2); ctx.fill();
+
+  // ── Arms converging to prayer hands ──
+  ctx.strokeStyle = '#c8d4e0';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(0, -6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4, -8); ctx.lineTo(0, -6); ctx.stroke();
+
+  // Prayer hands glow
+  const prayGlow = 0.3 + 0.2 * Math.sin(t * 1.2);
+  ctx.fillStyle = `rgba(255,240,200,${prayGlow})`;
+  ctx.beginPath(); ctx.arc(0, -6, 2.5, 0, Math.PI * 2); ctx.fill();
+
+  // ── Head ──
+  ctx.fillStyle = '#e8c8a0';
+  ctx.beginPath(); ctx.arc(0, -17, 4.5, 0, Math.PI * 2); ctx.fill();
+
+  // ── Headband ──
+  ctx.strokeStyle = 'rgba(200,210,230,0.6)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(0, -17, 5, -Math.PI * 0.85, Math.PI * 0.15); ctx.stroke();
+
+  // ── Hair flowing left ──
+  ctx.strokeStyle = '#c8a060';
+  ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-2, -19);
+  ctx.quadraticCurveTo(-14, -17 + Math.sin(t) * 2, -22, -12 + Math.sin(t * 1.3) * 3);
+  ctx.stroke();
+  ctx.lineWidth = 1.8;
+  ctx.strokeStyle = '#dbb870';
+  ctx.beginPath();
+  ctx.moveTo(-1, -18);
+  ctx.quadraticCurveTo(-12, -19 + Math.sin(t + 0.8) * 2, -19, -15 + Math.sin(t * 0.9) * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-3, -16);
+  ctx.quadraticCurveTo(-10, -14 + Math.sin(t + 1.5) * 1.5, -17, -10 + Math.sin(t * 1.1) * 2);
+  ctx.stroke();
+
+  // ── Scarf / wrap trailing ──
+  ctx.strokeStyle = 'rgba(230,240,255,0.45)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-3, -10);
+  ctx.quadraticCurveTo(-15, -5 + Math.sin(t * 0.7) * 3, -22, 0 + Math.sin(t * 1.1) * 4);
+  ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = 'rgba(220,230,250,0.3)';
+  ctx.beginPath();
+  ctx.moveTo(-3, -9);
+  ctx.quadraticCurveTo(-13, -3 + Math.sin(t * 0.8 + 0.5) * 3, -20, 4 + Math.sin(t * 0.6) * 3);
+  ctx.stroke();
+
+  // ── Eyes (closed — meditative) ──
+  ctx.strokeStyle = '#5c3d20';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(-1.5, -17.5); ctx.lineTo(1.5, -17.5); ctx.stroke();
+
+  // ── Surge effect ──
+  if (S.surging) {
+    ctx.strokeStyle = 'rgba(168,212,255,0.3)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const yy = 14 + i * 8;
+      ctx.globalAlpha = 0.3 - i * 0.07;
+      ctx.beginPath();
+      ctx.moveTo(-3, yy); ctx.lineTo(3, yy);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ── Reflect effect ──
+  if (S.reflecting) {
+    const rPulse = 0.3 + 0.3 * Math.sin(S.frame * 0.15);
+    const rg = ctx.createRadialGradient(0, -6, 0, 0, -6, 30);
+    rg.addColorStop(0, `rgba(212,175,55,${rPulse * 0.2})`);
+    rg.addColorStop(1, 'rgba(212,175,55,0)');
+    ctx.fillStyle = rg;
+    ctx.beginPath(); ctx.arc(0, -6, 30, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ── Cadence state: golden rings ──
+  if (S.inCadence) {
+    ctx.strokeStyle = `rgba(212,175,55,${0.15 + 0.1 * Math.sin(t * 1.5)})`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 2; i++) {
+      const cr = 16 + i * 8;
+      ctx.beginPath();
+      ctx.arc(0, -2, cr, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+// ── 10. PARTICLES ─────────────────────────────────────────────────────
+function drawParticles() {
+  S.particles.forEach(p => {
+    const sy = worldToScreenY(p.wy);
+    const sx = p.wx;
+    if (sy < -10 || sy > H + 10) return;
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(sx, sy, p.r * p.life, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ── 10b. CURRENT PATH LABEL ──────────────────────────────────────────
+function drawPathLabel() {
+  const seg = getSegmentAt(S.col, S.worldY);
+  if (!seg) return;
+  const labels = {
+    stable: 'STONE PATH',
+    swift: 'SWIFT ROUTE',
+    shelter: 'SHELTERED WAY',
+    void: 'THE VOID',
+  };
+  const colors = {
+    stable: 'rgba(168,212,255,0.25)',
+    swift: 'rgba(130,120,220,0.3)',
+    shelter: 'rgba(212,175,55,0.25)',
+    void: 'rgba(140,140,180,0.18)',
+  };
+  const label = labels[seg.type] || '';
+  ctx.save();
+  ctx.font = '600 9px "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = colors[seg.type] || 'rgba(197,193,185,0.2)';
+  ctx.fillText(label, W / 2, H * 0.88);
+  ctx.restore();
+}
+
+// ── 11. ATMOSPHERIC OVERLAYS ──────────────────────────────────────────
+function drawAtmosphere() {
+  // Tension tint — red-purple vignette at screen edges
+  if (S.tension > 30) {
+    const tAlpha = Math.min(0.25, (S.tension - 30) * 0.004);
+    // Top edge
+    const tg = ctx.createLinearGradient(0, 0, 0, H * 0.15);
+    tg.addColorStop(0, `rgba(80,20,50,${tAlpha})`);
+    tg.addColorStop(1, 'rgba(80,20,50,0)');
+    ctx.fillStyle = tg;
+    ctx.fillRect(0, 0, W, H * 0.15);
+    // Bottom edge
+    const bg = ctx.createLinearGradient(0, H, 0, H * 0.85);
+    bg.addColorStop(0, `rgba(80,20,50,${tAlpha})`);
+    bg.addColorStop(1, 'rgba(80,20,50,0)');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, H * 0.85, W, H * 0.15);
+  }
+
+  // High-altitude fog
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  if (alt > CFG.MIST_ZONE_START) {
+    const fogA = Math.min(0.15, (alt - CFG.MIST_ZONE_START) * 0.25);
+    const fg = ctx.createLinearGradient(0, 0, 0, H);
+    fg.addColorStop(0, `rgba(180,200,220,${fogA})`);
+    fg.addColorStop(0.4, `rgba(180,200,220,${fogA * 0.3})`);
+    fg.addColorStop(1, 'rgba(180,200,220,0)');
+    ctx.fillStyle = fg;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Dissolve white-out
+  if (S.phase === 'dissolve') {
+    const progress = 1 - S.dissolveTimer / 180;
+    const whiteA = progress < 0.5
+      ? progress * 2 * 0.7
+      : (1 - (progress - 0.5) * 2) * 0.7;
+    ctx.fillStyle = `rgba(200,200,220,${Math.max(0, whiteA)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ── 12. STATE INDICATORS ──────────────────────────────────────────────
+function updateStateIndicators() {
+  const compOrb = document.getElementById('orb-composure');
+  const momOrb  = document.getElementById('orb-momentum');
+  const tensOrb = document.getElementById('orb-tension');
+  const faithOrb = document.getElementById('orb-faith');
+
+  const cI = S.composure / 100;
+  const mI = S.momentum / 100;
+  const tI = S.tension / 100;
+  const fI = S.faith / 100;
+
+  compOrb.style.background = `rgba(168,212,255,${0.2 + cI * 0.8})`;
+  compOrb.style.boxShadow = `0 0 ${4 + cI * 8}px rgba(168,212,255,${cI * 0.6})`;
+
+  momOrb.style.background = `rgba(87,94,207,${0.2 + mI * 0.8})`;
+  momOrb.style.boxShadow = `0 0 ${4 + mI * 8}px rgba(87,94,207,${mI * 0.6})`;
+
+  tensOrb.style.background = `rgba(200,60,80,${0.15 + tI * 0.85})`;
+  tensOrb.style.boxShadow = `0 0 ${4 + tI * 8}px rgba(200,60,80,${tI * 0.5})`;
+
+  faithOrb.style.background = `rgba(212,175,55,${0.15 + fI * 0.85})`;
+  faithOrb.style.boxShadow = `0 0 ${4 + fI * 8}px rgba(212,175,55,${fI * 0.5})`;
+
+  // Progress bar
+  const alt = 1 - S.worldY / CFG.WORLD_HEIGHT;
+  document.getElementById('prog-fill').style.height = (alt * 100).toFixed(1) + '%';
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  MAIN RENDER
+// ════════════════════════════════════════════════════════════════════════
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  drawSky();
+  drawStars();
+  drawMountainEdges();
+  drawMist();
+  drawLanes();
+  drawPrayerFlags();
+  drawSummitBeacon();
+  drawGhosts();
+  drawElara();
+  drawParticles();
+  drawPathLabel();
+  drawAtmosphere();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  GAME FLOW
+// ════════════════════════════════════════════════════════════════════════
+function startGame() {
+  resize();
+
+  S.phase = 'play';
+  S.frame = 0;
+  S.worldY = CFG.WORLD_HEIGHT - 100;
+  S.col = 1;
+  S.colVisualX = colX(1);
+  S.momentum = 50;
+  S.composure = 70;
+  S.tension = 10;
+  S.faith = CFG.FAITH_START;
+  S.surging = false;
+  S.reflecting = false;
+  S.actionTimer = 0;
+  S.cooldown = 0;
+  S.cadenceTimer = 0;
+  S.inCadence = false;
+  S.dissolutions = 0;
+  S.dissolveTimer = 0;
+  S.lastGateY = CFG.WORLD_HEIGHT - 100;
+  S.particles = [];
+  S.ghosts = [];
+  S.ghostSpawnTimer = 0;
+  S.cameraY = S.worldY - H * CFG.PLAYER_SCREEN_Y;
+
+  CH.aestheticTime = 0;
+  CH.ethicalTime = 0;
+  CH.faithLeaps = 0;
+  CH.reflections = 0;
+  CH.surges = 0;
+  CH.shelteredTime = 0;
+  CH.voidTime = 0;
+
+  GATES.forEach(g => g.passed = false);
+  TEXT_TRIGGERS.forEach(t => t.fired = false);
+
+  generateMountain();
+  initStars();
+  initMist();
+
+  document.getElementById('scr-start').classList.add('gone');
+  document.getElementById('scr-end').classList.add('gone');
+  document.getElementById('gate-overlay').classList.remove('show');
+  document.getElementById('text-frag').classList.remove('show');
+  document.getElementById('state-bar').style.display = 'flex';
+  document.getElementById('progress-bar').style.display = 'block';
+}
+
+function showEnding() {
+  S.phase = 'end';
+  const key = determineEnding();
+  const ending = ENDINGS[key];
+
+  document.getElementById('state-bar').style.display = 'none';
+  document.getElementById('progress-bar').style.display = 'none';
+
+  const orbEl = document.getElementById('end-orb');
+  orbEl.className = 'orb ' + (ending.orbClass || '');
+
+  document.getElementById('end-title').textContent = ending.title;
+  document.getElementById('end-title').style.background =
+    key === 'dissolved' || key === 'fragmented'
+      ? 'linear-gradient(135deg,#9988aa,#665577,#9988aa)'
+      : (key === 'faith' || key === 'integrated'
+        ? 'linear-gradient(135deg,#ffe8a0,#d4af37,#fff0b0)'
+        : 'linear-gradient(135deg,#a8d4ff,#575ECF,#d4af37)');
+  document.getElementById('end-title').style.webkitBackgroundClip = 'text';
+  document.getElementById('end-title').style.backgroundClip = 'text';
+  document.getElementById('end-title').style.webkitTextFillColor = 'transparent';
+
+  document.getElementById('end-subtitle').textContent = ending.subtitle;
+  document.getElementById('end-poem').innerHTML = ending.poem.replace(/\n/g, '<br>');
+
+  // Stats
+  const statsEl = document.getElementById('end-stats');
+  const alt = Math.round((1 - S.worldY / CFG.WORLD_HEIGHT) * 100);
+  statsEl.innerHTML = `
+    <div class="end-stat"><div class="end-stat-val">${alt}%</div><div class="end-stat-lbl">Altitude</div></div>
+    <div class="end-stat"><div class="end-stat-val">${CH.faithLeaps}</div><div class="end-stat-lbl">Leaps</div></div>
+    <div class="end-stat"><div class="end-stat-val">${CH.reflections}</div><div class="end-stat-lbl">Reflections</div></div>
+    <div class="end-stat"><div class="end-stat-val">${S.dissolutions}</div><div class="end-stat-lbl">Dissolutions</div></div>
+  `;
+
+  const btnStyle = key === 'faith' || key === 'integrated'
+    ? 'border-color:rgba(212,175,55,.5);color:#ffe8a0;box-shadow:0 0 22px rgba(212,175,55,.25)'
+    : '';
+  document.getElementById('btn-again').style.cssText = btnStyle;
+
+  document.getElementById('scr-end').classList.remove('gone');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  MAIN LOOP
+// ════════════════════════════════════════════════════════════════════════
+function loop() {
+  requestAnimationFrame(loop);
+
+  if (S.phase === 'play' || S.phase === 'dissolve') {
+    update();
+    render();
+    updateStateIndicators();
+  } else if (S.phase === 'gate') {
+    // Gate auto-close timer
+    if (gateAutoClose > 0) {
+      gateAutoClose--;
+      if (gateAutoClose <= 0) closeGate();
+    }
+    // Keep rendering but don't update physics
+    render();
+    updateStateIndicators();
+    updateParticles();
+  } else {
+    // Menu screens — animate background
+    S.frame++;
+    S.cameraY = (CFG.WORLD_HEIGHT - 100) - H * CFG.PLAYER_SCREEN_Y + Math.sin(S.frame * 0.005) * 20;
+    drawSky();
+    drawStars();
+    drawMountainEdges();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════════════════════
+initStars();
+initMist();
+generateMountain();
+S.cameraY = (CFG.WORLD_HEIGHT - 100) - H * CFG.PLAYER_SCREEN_Y;
+requestAnimationFrame(loop);
+</script>
+
+<!-- Button binding — separate block for reliability -->
+<script>
+(function() {
+  function safeStart() {
+    if (typeof startGame !== 'function') return;
+    try { startGame(); } catch(e) {
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:#c0392b;color:#fff;padding:20px 28px;z-index:999999;font-family:monospace;font-size:13px;border-radius:8px;text-align:center';
+      d.textContent = 'Error: ' + e.message;
+      document.body.appendChild(d);
+    }
+  }
+
+  ['btn-start', 'btn-again'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    var lastFired = 0;
+    btn.addEventListener('touchend', function(e) {
+      e.stopPropagation(); e.preventDefault();
+      var now = Date.now();
+      if (now - lastFired > 400) { lastFired = now; safeStart(); }
+    }, { passive: false });
+    btn.addEventListener('click', function() {
+      var now = Date.now();
+      if (now - lastFired > 400) { lastFired = now; safeStart(); }
+    });
+  });
+})();
+</script>
+</body>
+</html>
